@@ -91,6 +91,8 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .yn{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px}
 .yn button{min-height:84px;border:0;border-radius:22px;font:700 30px 'Chakra Petch',sans-serif;color:#fff;cursor:pointer;box-shadow:0 6px 0 rgba(0,0,30,.3)}
 .yn .y{background:var(--ok)}.yn .n{background:var(--bad)}
+.yn .mcb{background:#fff;color:#131638}.yn .mcb.ok{background:var(--ok);color:#fff}.yn .mcb.no{background:var(--bad);color:#fff}
+.cell.sm{font-size:22px}
 .combo{color:var(--gold);font-weight:700}
 /* reflex */
 .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px}
@@ -157,15 +159,29 @@ function minFactor(n){for(let i=2;i*i<=n;i++)if(n%i===0)return i;return n}
 const MODELS={nova:{n:'NOVA',c:'#ff3d7f',d:'Rápida y curiosa'},byte:{n:'BYTE',c:'#ffc83d',d:'Precisa y calculadora'},titan:{n:'TITAN',c:'#00d1c1',d:'Fuerte y resistente'}};
 const PARTS=['Ojos láser','Antena','Brazos','Núcleo','Propulsores','Visor','Alas','Corona'];
 const T210=[2,3,4,5,6,7,8,9,10];
+/* camino: cada tabla sola, y recién después se suma a la mezcla acumulada (2-3, 2-4, 2-5...) */
+function buildLevels(p1,p2,sq){const L=[{name:'Pares e impares',sub:'¿Es par o impar? Números hasta 100',kind:'parity',max:100},{name:'De 10 en 10',sub:'Sumar y restar 10, y seguir la serie',kind:'tens',max:100},{name:'La mitad',sub:'¿Cuánto es la mitad de…? También con coma',kind:'half',max:100}],partAt={3:0,5:1,7:2,9:3,10:4};
+ for(let t=2;t<=10;t++){L.push({name:'Tabla del '+t,sub:'Solo la tabla del '+t,tabs:[t]});
+  if(t>=3){const mix=T210.filter(x=>x<=t);const pi=partAt[t];L.push({name:'Mezcla 2 al '+t,sub:'Tablas del 2 al '+t+' mezcladas',tabs:mix,part:pi})}}
+ if(sq){L.push({name:'Cuadrados I',sub:'Cuadrados del 2 al 7: 2², 3²… 7²',kind:'sq',max:7});L.push({name:'Cuadrados II',sub:'Cuadrados del 2 al 12: hasta 12²',kind:'sq',max:12})}
+ L.push({name:'Primos I',sub:'Números primos hasta '+p1,max:p1,part:5});
+ L.push({name:'Primos II',sub:'Números primos hasta '+p2,max:p2,part:6});
+ L.push({name:'Jefe final',sub:'Todas las tablas y primos hasta '+p2,tabs:T210,max:p2,part:7});
+ return L}
 const TRACKS={
- delfi:{name:'Delfi',qt:12,bossQ:10,need:10,levels:[
-  {sub:'Tablas del 2, 5 y 10',tabs:[2,5,10]},{sub:'Tablas del 3 y 4',tabs:[3,4]},{sub:'Tabla del 6',tabs:[6]},{sub:'Tabla del 7',tabs:[7]},
-  {sub:'Tablas del 8 y 9',tabs:[8,9]},{sub:'Números primos hasta 20',max:20},{sub:'Números primos hasta 50',max:50},{sub:'Jefe final: todas las tablas y primos hasta 50',tabs:T210,max:50}]},
- santi:{name:'Santi',qt:10,bossQ:12,need:12,levels:[
-  {sub:'Tablas del 2 al 5',tabs:[2,3,4,5]},{sub:'Tablas del 6 y 7',tabs:[6,7]},{sub:'Tablas del 8 y 9',tabs:[8,9]},{sub:'Turbo: tablas del 6 al 9 mezcladas',tabs:[6,7,8,9]},
-  {sub:'Números primos hasta 30',max:30},{sub:'Números primos hasta 100',max:100},{sub:'Todas las tablas del 2 al 10',tabs:T210},{sub:'Jefe final: todas las tablas y primos hasta 100',tabs:T210,max:100}]}
+ delfi:{name:'Delfi',qt:12,bossQ:10,bossErr:0,need:10,levels:buildLevels(20,50)},
+ santi:{name:'Santi',qt:10,bossQ:12,bossErr:0,need:12,levels:buildLevels(30,100,true)}
 };
+const LVVER=5;
 const TIPS={2:'La del 2 es el doble: 2 × 7 = 7 + 7 = 14.',3:'Contá de 3 en 3: 3, 6, 9, 12, 15, 18…',4:'La del 4 es el doble del doble: 4 × 6 → 6+6 = 12 → 12+12 = 24.',5:'Siempre termina en 0 o en 5. 5 × 8 es la mitad de 10 × 8 = 80 → 40.',6:'6 × n es el doble de 3 × n: 6 × 7 → 3 × 7 = 21 → 42.',7:'La más difícil. Truco: 5, 6, 7, 8 → 56 = 7 × 8.',8:'8 × n es doblar tres veces: 8 × 6 → 12 → 24 → 48.',9:'9 × n = 10 × n − n: 9 × 7 = 70 − 7 = 63.',10:'Agregale un 0: 10 × 6 = 60.'};
+const LESSONS={
+ parity:{t:'Pares e impares',b:[['Qué es','Un número es <b>par</b> si se puede repartir en dos partes iguales. Si siempre sobra 1, es <b>impar</b>.'],['El truco','Mirá <b>solo la última cifra</b>:<br>Termina en <b>0, 2, 4, 6 u 8</b> → PAR<br>Termina en <b>1, 3, 5, 7 o 9</b> → IMPAR'],['Ejemplos','<b>48</b> termina en 8 → par<br><b>75</b> termina en 5 → impar<br><b>130</b> termina en 0 → par<br><b>91</b> termina en 1 → impar']]},
+ tens:{t:'De 10 en 10',b:[['Qué es','Contar de 10 en 10 es sumar 10 cada vez. Se usa todo el tiempo para hacer cuentas rápido.'],['El truco','Cuando sumás 10, <b>la última cifra no cambia</b>. Solo sube 1 la cifra de adelante (las decenas).'],['Ejemplos','47 + 10 = <b>57</b><br>83 − 10 = <b>73</b><br>Serie: 6, 16, 26, 36, <b>46</b><br>Serie: 20, 30, 40, <b>50</b>']]},
+ prime:{t:'Números primos',b:[['Qué es','Un número <b>primo</b> solo se puede dividir exacto por <b>1</b> y por <b>sí mismo</b>. No se puede armar multiplicando dos números más chicos.'],['Cómo darte cuenta','Probá si se divide exacto por <b>2, 3, 5 o 7</b>. Si ninguno lo divide (y no es uno de ellos), es primo.<br>El <b>1 no es primo</b>. El <b>2</b> es el único primo par.'],['Ejemplos','<b>13</b> → solo 1 × 13 → <b>primo</b><br><b>15</b> → 3 × 5 → NO es primo<br><b>21</b> → 3 × 7 → NO es primo<br><b>9</b> → 3 × 3 → NO es primo'],['Primos hasta 50','2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47']]},
+ half:{t:'La mitad',b:[['Qué es','La <b>mitad</b> es repartir en <b>2 partes iguales</b>. Es lo mismo que dividir por 2.'],['Si el número es par','Es fácil: 8 → <b>4</b>, 20 → <b>10</b>, 46 → <b>23</b>.<br>Truco para números grandes: la mitad de 46 = mitad de 40 (20) + mitad de 6 (3) = <b>23</b>.'],['Si el número es impar','Sobra 1, y <b>la mitad de 1 es 0,5</b>.<br>7 = 6 + 1 → la mitad es 3 + 0,5 = <b>3,5</b><br>15 = 14 + 1 → 7 + 0,5 = <b>7,5</b>'],['Ejemplos','10 → <b>5</b><br>9 → <b>4,5</b><br>31 → <b>15,5</b><br>50 → <b>25</b>']]},
+ sq:{t:'Cuadrados',b:[['Qué es','El <b>cuadrado</b> de un número es multiplicarlo <b>por sí mismo</b>. El 2 chiquito arriba (²) se lee "al cuadrado".'],['Cómo se hace','5² se lee "cinco al cuadrado" y es <b>5 × 5 = 25</b>.<br>Ojo: 5² <b>no</b> es 5 × 2.'],['Ejemplos','2² = 2 × 2 = <b>4</b><br>3² = 3 × 3 = <b>9</b><br>7² = 7 × 7 = <b>49</b><br>10² = 10 × 10 = <b>100</b><br>12² = 12 × 12 = <b>144</b>']]}};
+const lessonKey=l=>l.kind==='half'||l.kind==='parity'||l.kind==='tens'||l.kind==='sq'?l.kind:(l.max&&!l.tabs?'prime':null);
+let pendingPlay=null;
 const PRIME_TIP='Un número <b>primo</b> solo se puede dividir exacto por 1 y por sí mismo. 7 es primo. 9 no, porque 3 × 3 = 9. El 2 es el único primo par. Truco: si termina en 0, 2, 4, 6, 8 o 5 (y no es el 2 o el 5), <b>no</b> es primo.';
 const BADGES=[
  ['r3','Racha x3','3 días seguidos entrenando',()=>S.streak>=3],
@@ -177,12 +193,12 @@ const BADGES=[
  ['combo','Imparable','10 respuestas seguidas sin error',o=>!!o&&o.combo>=10],
  ['perf','Jefe perfecto','Ganarle a un jefe sin errores',o=>!!o&&o.kind==='boss'&&o.pass&&o.err===0],
  ['pri','Cazaprimos','Completar un módulo de primos',()=>track().levels.some((l,i)=>l.max&&!l.tabs&&Lget(i).st>=3)],
- ['super','SUPER IA','Completar los 8 módulos',()=>doneCount()>=8]];
+ ['super','SUPER IA','Completar todos los módulos',()=>doneCount()>=totalLv()]];
 
-function fresh(){return {v:1,role:null,player:null,ia:{name:'',model:'nova'},start:null,xp:0,lv:{},days:{},facts:{},streak:0,best:0,last:null,lastP:null,pen:0,badges:[],pin:'1234',prize:'',chest:false,sound:true,rivals:{},tot:{c:0,t:0,sec:0},qt:null}}
+function fresh(){return {v:1,lvv:5,seen:{},role:null,player:null,ia:{name:'',model:'nova'},start:null,xp:0,lv:{},days:{},facts:{},streak:0,best:0,last:null,lastP:null,pen:0,badges:[],pin:'1234',prize:'',chest:false,sound:true,rivals:{},tot:{c:0,t:0,sec:0},qt:null}}
 let S;
 try{S=JSON.parse(localStorage.getItem(KEY))||fresh()}catch(e){S=fresh()}
-S=Object.assign(fresh(),S);
+S=Object.assign(fresh(),S);if(S.lvv!==LVVER){S.lv={};S.lvv=LVVER}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
 const STORE_OK=(()=>{try{localStorage.setItem('__t','1');const ok=localStorage.getItem('__t')==='1';localStorage.removeItem('__t');return ok}catch(e){return false}})();
 const LOADED=(()=>{try{return !!localStorage.getItem(KEY)}catch(e){return false}})();
@@ -194,7 +210,9 @@ const rustCount=()=>track().levels.filter((l,i)=>Lget(i).rust).length;
 const unlocked=i=>i===0||Lget(i-1).st>=3;
 const qtime=()=>S.qt||track().qt;
 const dayIdx=()=>S.start?gap(S.start,todayKey())+1:1;
-const partState=()=>PARTS.map((p,i)=>{const l=Lget(i);return l.st>=3?(l.rust?'rust':'on'):'off'});
+const partsFrom=(T,get)=>PARTS.map((p,j)=>{const i=T.levels.findIndex(l=>l.part===j);const l=get(i);return l.st>=3?(l.rust?'rust':'on'):'off'});
+const partState=()=>partsFrom(track(),Lget);
+const totalLv=()=>track().levels.length;
 
 let view='home',Q=null,R=null,loopTok=0,timers=[],curLevel=0,lastResult=null,onbModel='nova',panelBack='home',audio=null;
 
@@ -249,27 +267,39 @@ function checkDecay(){
 }
 
 /* preguntas */
-function pool(l){const o=[];if(l.tabs)for(const a of l.tabs)for(let b=1;b<=10;b++)o.push({k:a+'x'+b,type:'tab',a,b});if(l.max)for(let n=2;n<=l.max;n++)o.push({k:'p'+n,type:'prime',n});return o}
+function pool(l){const o=[];if(l.kind==='half'){for(let n=2;n<=l.max;n++)o.push({k:'h'+n,type:'half',n});return o}
+ if(l.kind==='sq'){for(let n=2;n<=l.max;n++)o.push({k:'q'+n,type:'sq',n});return o}
+ if(l.kind==='parity'){for(let n=1;n<=l.max;n++)o.push({k:'e'+n,type:'parity',n});return o}
+ if(l.kind==='tens'){for(let a=1;a<=90;a++)o.push({k:'t+'+a,type:'tens',op:'+',a});for(let a=11;a<=100;a++)o.push({k:'t-'+a,type:'tens',op:'-',a});for(let a=0;a<=69;a++)o.push({k:'ts'+a,type:'tens',op:'s',a});return o}
+ if(l.tabs)for(const a of l.tabs)for(let b=1;b<=10;b++)o.push({k:a+'x'+b,type:'tab',a,b});if(l.max)for(let n=2;n<=l.max;n++)o.push({k:'p'+n,type:'prime',n});return o}
 /* errores: un fallo marca la cuenta como "débil" y sale mucho más seguido hasta acertarla 3 veces seguidas */
 function pickW(list,prev){let tot=0;const w=list.map(f=>{const s=S.facts[f.k]||{c:0,w:0};const x=f.k===prev&&list.length>1?0:s.weak?8:1+Math.min(3,Math.max(0,s.w-s.c*.5));tot+=x;return x});let r=Math.random()*tot;for(let i=0;i<list.length;i++){r-=w[i];if(r<=0)return list[i]}return list[list.length-1]}
-function keyFact(k){if(k[0]==='p')return {k,type:'prime',n:+k.slice(1)};const p=k.split('x');return {k,type:'tab',a:+p[0],b:+p[1]}}
+function keyFact(k){if(k[0]==='p')return {k,type:'prime',n:+k.slice(1)};if(k[0]==='e')return {k,type:'parity',n:+k.slice(1)};if(k[0]==='h')return {k,type:'half',n:+k.slice(1)};if(k[0]==='q')return {k,type:'sq',n:+k.slice(1)};if(k[0]==='t')return {k,type:'tens',op:k[1],a:+k.slice(2)};const p=k.split('x');return {k,type:'tab',a:+p[0],b:+p[1]}}
 const weakList=()=>Object.keys(S.facts).filter(k=>S.facts[k].weak).map(keyFact);
-function mkQ(f){if(f.type==='tab'){const sw=Math.random()<.5;return Object.assign({},f,{a:sw?f.b:f.a,b:sw?f.a:f.b,q:sw?`${f.b} × ${f.a}`:`${f.a} × ${f.b}`,ans:f.a*f.b})}
- return Object.assign({},f,{q:`¿${f.n} es primo?`,ans:isPrime(f.n)})}
+const fmt=x=>String(x).replace('.',',');
+function mkQ(f){if(f.type==='half'){const n=f.n,h=n/2,c=new Set([fmt(h)]);for(const x of [Math.floor(h),Math.ceil(h),n*2,h+1,h-1,h+10,n-2].sort(()=>Math.random()-.5)){if(c.size>=4)break;if(x>0)c.add(fmt(x))}
+  return Object.assign({},f,{mc:true,q:`La mitad de ${n}`,ans:fmt(h),opts:[...c].sort(()=>Math.random()-.5)})}
+ if(f.type==='sq')return Object.assign({},f,{num:true,q:`${f.n}²`,ans:f.n*f.n});
+ if(f.type==='parity')return Object.assign({},f,{yn:true,q:`¿${f.n} es par?`,ans:f.n%2===0});
+ if(f.type==='tens'){const a=f.a;const q=f.op==='+'?`${a} + 10`:f.op==='-'?`${a} − 10`:`${a}, ${a+10}, ${a+20}, …`;return Object.assign({},f,{num:true,q,ans:f.op==='+'?a+10:f.op==='-'?a-10:a+30})}
+ if(f.type==='tab'){const sw=Math.random()<.5;return Object.assign({},f,{num:true,a:sw?f.b:f.a,b:sw?f.a:f.b,q:sw?`${f.b} × ${f.a}`:`${f.a} × ${f.b}`,ans:f.a*f.b})}
+ return Object.assign({},f,{yn:true,q:`¿${f.n} es primo?`,ans:isPrime(f.n)})}
 function nextQ(l,prev){if(l.weak){const wl=weakList();if(wl.length)return mkQ(pickW(wl,prev))}
+ if(l.kind)return mkQ(pickW(pool(l),prev));
  const p=pool(l),tb=p.filter(f=>f.type==='tab'),pr=p.filter(f=>f.type==='prime');let list=tb.length&&pr.length?(Math.random()<.65?tb:pr):(tb.length?tb:pr);
  if(list===pr){const y=pr.filter(f=>isPrime(f.n)),n=pr.filter(f=>!isPrime(f.n));list=Math.random()<.5?y:n}
  return mkQ(pickW(list,prev))}
-function explain(c){if(c.type==='tab')return `${c.a} × ${c.b} = ${c.ans}`;if(c.ans)return `${c.n} SÍ es primo: solo se divide por 1 y por ${c.n}`;const p=minFactor(c.n);return `${c.n} NO es primo: ${p} × ${c.n/p} = ${c.n}`}
+function eqHtml(c){if(c.type==='half')return `La mitad de ${c.n} = <b>${c.ans}</b>`;if(c.type==='sq')return `${c.n}² = ${c.n} × ${c.n} = <b>${c.ans}</b>`;if(c.type==='tab')return `${c.a} × ${c.b} = <b>${c.ans}</b>`;if(c.op==='s')return `${c.a}, ${c.a+10}, ${c.a+20}, <b>${c.ans}</b>`;return `${esc(c.q)} = <b>${c.ans}</b>`}
+function explain(c){if(c.type==='half'){if(c.n%2===0)return `${c.n} ÷ 2 = ${c.ans}`;const e=c.n-1;return `${c.n} = ${e} + 1. La mitad de ${e} es ${e/2} y la mitad de 1 es 0,5 → ${c.ans}`}if(c.type==='sq')return `${c.n}² = ${c.n} × ${c.n} = ${c.ans}`;if(c.type==='tab')return `${c.a} × ${c.b} = ${c.ans}`;if(c.type==='tens')return c.op==='s'?`Sumá 10 cada vez: ${c.a+20} + 10 = ${c.ans}`:`${c.q} = ${c.ans}`;if(c.type==='parity')return `${c.n} termina en ${c.n%10}: es ${c.ans?'PAR':'IMPAR'}. Los pares terminan en 0, 2, 4, 6 u 8.`;if(c.ans)return `${c.n} SÍ es primo: solo se divide por 1 y por ${c.n}`;const p=minFactor(c.n);return `${c.n} NO es primo: ${p} × ${c.n/p} = ${c.n}`}
 
 function startQuiz(mode,li){const l=mode==='repaso'?{weak:true}:track().levels[li];const boss=mode==='boss';Q={mode,li,l,n:boss?track().bossQ:10,i:0,ok:0,err:0,combo:0,maxCombo:0,xp:0,sec:0,input:'',limit:boss?Math.round(qtime()*.85):qtime(),locked:false,fix:0,cur:null,prev:null,retry:[],cleared:0};newQ()}
 function newQ(){const r=Q.retry.findIndex(x=>x.due<=Q.i);Q.cur=r>=0?mkQ(Q.retry.splice(r,1)[0].f):nextQ(Q.l,Q.prev);Q.prev=Q.cur.k;Q.input='';Q.locked=false;Q.fix=0;Q.t0=performance.now();view='quiz';render()}
-function nextAfter(ms){timers.push(setTimeout(()=>{Q.i++;if((Q.mode==='boss'&&Q.err>1)||Q.i>=Q.n||(Q.mode==='repaso'&&!weakList().length&&!Q.retry.length))finishQuiz();else newQ()},ms))}
+function nextAfter(ms){timers.push(setTimeout(()=>{Q.i++;if((Q.mode==='boss'&&Q.err>track().bossErr)||Q.i>=Q.n||(Q.mode==='repaso'&&!weakList().length&&!Q.retry.length))finishQuiz();else newQ()},ms))}
 function fixKey(){if(Q.input.length<String(Q.cur.ans).length)return;const el=$('#inp');
  if(Number(Q.input)===Q.cur.ans){Q.fix=0;sOk();if(el){el.style.color='var(--ok)'}nextAfter(500)}
  else{sBad();Q.input='';if(el){el.textContent='?'}}}
 function answer(val){if(!Q||Q.locked)return;Q.locked=true;const el=(performance.now()-Q.t0)/1000;Q.sec+=Math.min(el,Q.limit);
- const c=Q.cur,right=val!==null&&(c.type==='tab'?Number(val)===c.ans:val===c.ans);
+ const c=Q.cur,right=val!==null&&(c.num?Number(val)===c.ans:val===c.ans);
  const f=S.facts[c.k]||(S.facts[c.k]={c:0,w:0});S.tot.t++;
  const card=$('#qc'),fb=$('#fb'),tb=$('.tbar');
  if(right){f.c++;f.s=(f.s||0)+1;if(f.weak&&f.s>=3){f.weak=false;Q.cleared++}S.tot.c++;Q.ok++;Q.combo++;Q.maxCombo=Math.max(Q.maxCombo,Q.combo);const sp=Math.max(0,Math.round(5*(1-el/Q.limit)));const g=10+sp+(Q.combo%5===0?5:0);Q.xp+=g;sOk();
@@ -277,25 +307,29 @@ function answer(val){if(!Q||Q.locked)return;Q.locked=true;const el=(performance.
  f.w++;f.s=0;f.weak=true;Q.err++;Q.combo=0;sBad();save();
  if(Q.mode!=='boss')Q.retry.push({f:keyFact(c.k),due:Q.i+3});
  if(card)card.classList.add('badq');if(tb)tb.style.visibility='hidden';
- if(c.type==='tab'){Q.fix=1;const inp=$('#inp');if(inp)inp.innerHTML=val===null?'<span class="late">Se acabó el tiempo</span>':`<s class="wrong">${esc(val)}</s>`;
-  if(fb)fb.innerHTML=`<div class="right">${c.a} × ${c.b} = <b>${c.ans}</b></div>`;
+ if(c.num){Q.fix=1;const inp=$('#inp');if(inp)inp.innerHTML=val===null?'<span class="late">Se acabó el tiempo</span>':`<s class="wrong">${esc(val)}</s>`;
+  if(fb)fb.innerHTML=`<div class="right">${eqHtml(c)}</div>`;
   timers.push(setTimeout(()=>{if(!Q||Q.fix!==1)return;Q.fix=2;Q.input='';const i2=$('#inp');if(i2)i2.textContent='?';const f2=$('#fb');if(f2)f2.insertAdjacentHTML('beforeend','<div class="redo">Ahora escribilo vos</div>')},1600))}
- else{if(fb)fb.innerHTML=`<div class="right">${c.ans?'SÍ es primo':'NO es primo'}</div><div>${esc(explain(c))}</div>`;nextAfter(3000)}
+ else{if(fb)fb.innerHTML=`<div class="right"><b>${c.type==='half'?c.ans:c.type==='parity'?(c.ans?'Es PAR':'Es IMPAR'):(c.ans?'SÍ es primo':'NO es primo')}</b></div><div>${esc(explain(c))}</div>`;nextAfter(3000)}
 }
 function finishQuiz(){const q=Q;Q=null;const acc=q.ok/Math.max(1,q.i);let pass;
- if(q.mode==='boss')pass=q.i>=q.n&&q.err<=1;else pass=acc>=.7;
+ if(q.mode==='boss')pass=q.i>=q.n&&q.err<=track().bossErr;else pass=acc>=.7;
  endSession({kind:q.mode==='boss'?'boss':q.mode==='repaso'?'repaso':'train',li:q.li,ok:q.ok,n:q.i,err:q.err,sec:q.sec,xp:q.xp+q.cleared*10,combo:q.maxCombo,pass,acc,cleared:q.cleared})}
 
 /* reflejos */
-function startReflex(li){const l=track().levels[li];let kind=l.tabs&&l.max?(Math.random()<.5?'tab':'prime'):(l.tabs?'tab':'prime');const N=kind==='tab'?l.tabs[rnd(0,l.tabs.length-1)]:0;
- R={li,kind,N,max:l.max||0,hits:0,miss:0,left:30,cells:[],need:track().need,t0:performance.now()};for(let i=0;i<12;i++)R.cells.push(mkCell());view='reflex';render()}
-function mkCell(){const good=Math.random()<.5;let v;
+function startReflex(li){const l=track().levels[li];let kind=l.kind||(l.tabs&&l.max?(Math.random()<.5?'tab':'prime'):(l.tabs?'tab':'prime'));const N=kind==='tab'?l.tabs[rnd(0,l.tabs.length-1)]:0;
+ R={li,kind,N,even:Math.random()<.5,s:rnd(0,9),max:l.max||0,hits:0,miss:0,left:30,cells:[],need:track().need,t0:performance.now()};for(let i=0;i<12;i++)R.cells.push(mkCell());view='reflex';render()}
+function mkCell(){const good=Math.random()<.5;let v;const until=performance.now()+rnd(4500,8000);
+ if(R.kind==='parity'){const want=R.even?0:1;do{v=rnd(1,99)}while((v%2===want)!==good);return {v,good,until}}
+ if(R.kind==='half'){const n=rnd(2,50),h=n/2;let shown=h;if(!good){const alt=[Math.floor(h),Math.ceil(h),n*2,h+1].filter(x=>x!==h&&x>0);shown=alt[rnd(0,alt.length-1)]}return {v:`${n} → ${fmt(shown)}`,good,until}}
+ if(R.kind==='sq'){if(good)v=rnd(2,R.max)**2;else{do{v=rnd(2,R.max*R.max)}while(Number.isInteger(Math.sqrt(v)))}return {v,good,until}}
+ if(R.kind==='tens'){if(good){do{v=R.s+10*rnd(0,9)}while(v<1)}else{do{v=rnd(1,99)}while(v%10===R.s)}return {v,good,until}}
  if(R.kind==='tab'){if(good)v=R.N*rnd(1,10);else{do{v=rnd(2,R.N*10)}while(v%R.N===0)}}
  else{if(good){do{v=rnd(2,R.max)}while(!isPrime(v))}else{do{v=rnd(4,R.max)}while(isPrime(v))}}
- return {v,good:R.kind==='tab'?v%R.N===0&&v<=R.N*10:isPrime(v),until:performance.now()+rnd(1600,3200)}}
-function drawCell(i,cls){const b=document.querySelector(`[data-cell="${i}"]`);if(!b)return;b.textContent=R.cells[i].v;b.className='cell pop'+(cls?' '+cls:'')}
+ return {v,good:R.kind==='tab'?v%R.N===0&&v<=R.N*10:isPrime(v),until}}
+function drawCell(i,cls){const b=document.querySelector(`[data-cell="${i}"]`);if(!b)return;b.textContent=R.cells[i].v;b.className='cell pop'+(R.kind==='half'?' sm':'')+(cls?' '+cls:'')}
 function tapCell(i){if(!R||R.left<=0)return;const c=R.cells[i];if(c.good){R.hits++;sOk()}else{R.miss++;sBad()}
- const b=document.querySelector(`[data-cell="${i}"]`);if(b){b.className='cell '+(c.good?'hit':'miss')}
+ const b=document.querySelector(`[data-cell="${i}"]`);if(b){b.className='cell '+(R.kind==='half'?'sm ':'')+(c.good?'hit':'miss')}
  const nc=mkCell();R.cells[i]=nc;const tok=loopTok;setTimeout(()=>{if(tok===loopTok&&R)drawCell(i)},220);updReflex()}
 function updReflex(){const h=$('#rh');if(h)h.textContent=R.hits;const m=$('#rm');if(m)m.textContent=R.miss;const t=$('#rt');if(t)t.textContent=Math.ceil(R.left)}
 function reflexLoop(){const tok=loopTok;timers.push(setInterval(()=>{if(tok!==loopTok||!R)return;const now=performance.now();R.left=30-(now-R.t0)/1000;
@@ -309,9 +343,9 @@ function endSession(o){const t=todayKey(),li=o.li,lv=Lget(li),notes=[];if(o.clea
  if(S.lastP!==t){S.streak=(S.lastP&&gap(S.lastP,t)===1)?S.streak+1:1;S.lastP=t;notes.push(`Racha: ${S.streak} día${S.streak>1?'s':''} seguido${S.streak>1?'s':''}`)}
  S.last=t;S.pen=0;S.best=Math.max(S.best,S.streak);
  if(!d.m&&d.sec>=MISSION){d.m=1;gain+=40;notes.push('Misión del día cumplida: +40')}
- if(o.kind==='train'&&o.pass){if(lv.rust&&o.acc>=.8){lv.rust=false;notes.push(`Reparaste ${PARTS[li]}: tu IA lo volvió a recordar`)}else if(lv.rust)notes.push('Para reparar la pieza oxidada necesitás 80% o más');if(lv.st<1)lv.st=1}
+ if(o.kind==='train'&&o.pass){if(lv.rust&&o.acc>=.8){lv.rust=false;notes.push(`Reparaste ${track().levels[li].name}: tu IA lo volvió a recordar`)}else if(lv.rust)notes.push('Para reparar la pieza oxidada necesitás 80% o más');if(lv.st<1)lv.st=1;if(o.acc===1&&o.n>=10&&lv.st<2){lv.st=2;notes.push('¡10 de 10! Te salteás Reflejos: directo al Jefe')}}
  if(o.kind==='reflex'&&o.pass&&lv.st<2)lv.st=2;
- if(o.kind==='boss'&&o.pass){if(lv.rust){lv.rust=false;notes.push(`Reparaste ${PARTS[li]}`)}if(lv.st<3){lv.st=3;gain+=100;o.unlock=li}lv.stars=Math.max(lv.stars||0,o.err===0?3:2)}
+ if(o.kind==='boss'&&o.pass){if(lv.rust){lv.rust=false;notes.push(`Reparaste ${track().levels[li].name}`)}if(lv.st<3){lv.st=3;gain+=100;o.done=true;if(track().levels[li].part!==undefined)o.unlock=track().levels[li].part}lv.stars=Math.max(lv.stars||0,o.err===0?3:2)}
  if(li>=0)S.lv[li]=lv;S.xp+=gain;o.gain=gain;o.tx=tx;o.notes=notes;o.newB=[];
  for(const b of BADGES){if(!S.badges.includes(b[0])&&b[3](o)){S.badges.push(b[0]);o.newB.push(b[1])}}
  save();lastResult=o;if(o.pass)sWin();view='result';render()}
@@ -358,53 +392,57 @@ function vHome(){const T=track(),d=S.days[todayKey()]||{sec:0,m:0},mp=Math.min(1
  return `<div class="row"><span class="tag">${dn<=DAYS?`Día ${dn} de ${DAYS}`:'Tiempo extra'}</span><span class="tag">${ico.flame} ${S.streak}</span><span class="sp"></span>
  <button class="iconbtn" data-a="sound" aria-label="Sonido">${S.sound?ico.snd:ico.mute}</button><button class="iconbtn" data-a="panel" aria-label="Panel de mamá">${ico.lock}</button></div>
  <div class="hero">${robot(S.ia.model,ps)}<h1 style="margin:4px 0 0">${esc(S.ia.name)}</h1><div class="onf">${MODELS[S.ia.model].n} · entrenada por ${T.name}</div></div>
- <div class="stats"><div class="stat"><b>${S.xp.toLocaleString('es-AR')}</b><span>Poder</span></div><div class="stat"><b>${doneCount()}/8</b><span>Módulos</span></div><div class="stat"><b>${Math.round(S.tot.sec/60)}</b><span>Minutos</span></div></div>
+ <div class="stats"><div class="stat"><b>${S.xp.toLocaleString('es-AR')}</b><span>Poder</span></div><div class="stat"><b>${doneCount()}/${totalLv()}</b><span>Módulos</span></div><div class="stat"><b>${Math.round(S.tot.sec/60)}</b><span>Minutos</span></div></div>
  ${rustCount()?`<div class="card" style="border:3px solid var(--rust)"><h3>Tu IA tiene ${rustCount()} pieza${rustCount()>1?'s':''} oxidada${rustCount()>1?'s':''}</h3><p class="mut" style="margin:0">Por no entrenar, se olvidó. Entrá al módulo y hacé el Entrenamiento con 80% o más para repararla.</p></div>`:''}
  ${STORE_OK?'':`<div class="warn">Este celular NO está guardando el progreso. Avisale a mamá antes de seguir jugando.</div>`}
  ${weakList().length?`<div class="card" style="border:3px solid var(--pink)"><h3>Errores pendientes: ${weakList().length}</h3><p class="mut">Cuentas en las que te equivocaste. Cada una sale hasta que la aciertes 3 veces seguidas.</p><button class="btn" data-a="repaso">Repasar mis errores</button></div>`:''}
  <div class="card"><div class="row"><h3>Misión del día</h3><span class="sp"></span><span class="mut">${d.m?'Cumplida':Math.floor(d.sec/60)+' de '+MISSION/60+' min'}</span></div><p class="mut">Entrená ${MISSION/60} minutos reales hoy: +40 de poder.</p><div class="bar ${d.m?'g':''}"><i style="width:${mp}%"></i></div></div>
  <h2 style="margin-top:20px">Módulos de entrenamiento</h2>
  <div class="map">${T.levels.map((l,i)=>{const L=Lget(i),u=unlocked(i);const st=L.rust?'rust':L.st>=3?'done':u?'cur':'lock';
-  return `<button class="node ${st}" data-a="${u?'level':'locked'}" data-i="${i}"><div class="ic">${i+1}</div><div class="sp"><h3>${PARTS[i]}</h3><div class="mut">${l.sub}</div>${L.st>=3?`<div class="stars">${stars(L.stars||0)}</div>`:''}</div><div class="mut">${st==='rust'?'Oxidado':st==='done'?'Listo':st==='cur'?(L.st?L.st+'/3':'Nuevo'):'Bloqueado'}</div></button>`}).join('')}</div>
+  return `<button class="node ${st}" data-a="${u?'level':'locked'}" data-i="${i}"><div class="ic">${i+1}</div><div class="sp"><h3>${l.name}</h3><div class="mut">${l.sub}${l.part!==undefined?' · gana: '+PARTS[l.part]:''}</div>${L.st>=3?`<div class="stars">${stars(L.stars||0)}</div>`:''}</div><div class="mut">${st==='rust'?'Oxidado':st==='done'?'Listo':st==='cur'?(L.st?L.st+'/3':'Nuevo'):'Bloqueado'}</div></button>`}).join('')}</div>
  ${nav()}`}
 
 function vLevel(){const i=curLevel,l=track().levels[i],L=Lget(i);
  const tips=l.tabs&&l.tabs.length<=4?l.tabs.map(a=>`<div class="tip"><b>Tabla del ${a}.</b> ${TIPS[a]}</div>`).join(''):l.tabs?'<div class="tip">Mezcla de tablas: lo que más te cuesta va a aparecer más seguido hasta que lo domines.</div>':'';
- const pt=l.max?`<div class="tip">${PRIME_TIP}</div>`:'';
- const st=[['Entrenamiento','10 preguntas contra reloj. Pasás con 70%.'+(L.rust?' Con 80% reparás la pieza oxidada.':''),'train'],['Reflejos','30 segundos. Tocá solo los correctos. Meta: '+track().need+' aciertos.','reflex'],['Jefe','Ronda final más rápida. Podés errar 1 sola vez.','boss']];
+ const pt=l.kind==='half'?'<div class="tip">La mitad es dividir por 2. Si es impar, termina en <b>,5</b>: la mitad de 7 es 3,5.</div>':l.kind==='sq'?'<div class="tip">El cuadrado es el número multiplicado <b>por sí mismo</b>: 6² = 6 × 6 = 36. No es 6 × 2.</div>':l.kind==='parity'?'<div class="tip">Para saber si un número es <b>par</b>, mirá solo la <b>última cifra</b>. Si termina en 0, 2, 4, 6 u 8 es par. Si termina en 1, 3, 5, 7 o 9 es impar. 348 es par; 75 es impar.</div>':l.kind==='tens'?'<div class="tip">Sumar 10 cambia solo las <b>decenas</b>; la última cifra no se mueve: 47 + 10 = 57. Restar 10 es igual pero para atrás: 83 − 10 = 73. Una serie de 10 en 10 siempre termina igual: 7, 17, 27, 37…</div>':l.max?`<div class="tip">${PRIME_TIP}</div>`:'';
+ const st=[['Entrenamiento','10 preguntas contra reloj. Pasás con 70%.'+(L.rust?' Con 80% reparás la pieza oxidada.':''),'train'],['Reflejos','30 segundos. Tocá solo los correctos. Meta: '+track().need+' aciertos.','reflex'],['Jefe','Ronda final más rápida. Sin errores: uno solo y volvés a empezar.','boss']];
  return `<div class="row"><button class="iconbtn" data-a="go" data-v="home" aria-label="Volver">${ico.x}</button><span class="sp"></span><span class="tag">Módulo ${i+1}</span></div>
- <h1>${PARTS[i]}</h1><p class="onf">${l.sub}. Al ganarle al jefe, tu IA consigue: <b>${PARTS[i]}</b>.</p>
+ <h1>${l.name}</h1><p class="onf">${l.sub}.${l.part!==undefined?` Al ganarle al jefe, tu IA consigue: <b>${PARTS[l.part]}</b>.`:' Ganale al jefe para pasar al siguiente módulo.'}</p>
  ${L.rust?`<div class="card" style="border:3px solid var(--rust)"><b>Pieza oxidada.</b> Tu IA olvidó este módulo. Hacé el Entrenamiento con 80% o más (o ganale al jefe) para repararla.</div>`:''}
- <div class="card"><h3>Briefing</h3>${pt}${tips}</div>
+ <div class="card"><h3>Briefing</h3>${pt}${tips}${lessonKey(l)?'<button class="btn sec" data-a="lesson">Ver la explicación completa</button>':''}</div>
  ${st.map((s,k)=>{const ok=L.st>k,open=k===0||L.st>=k;return `<div class="card"><div class="stage ${ok?'ok':''}"><div class="n">${ok?'✓':k+1}</div><div class="sp"><h3>${s[0]}</h3><div class="mut">${s[1]}</div></div></div><button class="btn ${ok?'sec':''}" data-a="play" data-m="${s[2]}" ${open?'':'disabled'}>${!open?'Bloqueado':ok?'Repetir (suma poder)':'Jugar'}</button></div>`}).join('')}
  ${nav()}`}
 
+function vLesson(){const k=lessonKey(track().levels[curLevel]),L=LESSONS[k];
+ return `<div class="row"><button class="iconbtn" data-a="level" data-i="${curLevel}" aria-label="Volver">${ico.x}</button><span class="sp"></span><span class="tag">Explicación</span></div>
+ <h1>${L.t}</h1>${L.b.map(x=>`<div class="card"><h3>${x[0]}</h3><p style="font-size:18px;margin:0">${x[1]}</p></div>`).join('')}
+ <button class="btn" data-a="lessonok">${pendingPlay?'Entendido, ¡a jugar!':'Entendido'}</button>`}
 function vQuiz(){const c=Q.cur,boss=Q.mode==='boss';
- return `<div class="qtop"><button class="iconbtn" data-a="quit" aria-label="Salir">${ico.x}</button><span class="tag">${boss?'JEFE':Q.mode==='repaso'?'Repaso de errores':'Entrenamiento'} · ${Q.i+1}/${Q.n}</span><span class="sp"></span>${boss?`<span class="tag">Errores ${Q.err}/1</span>`:`<span class="combo">${Q.combo>=2?'x'+Q.combo:''}</span>`}</div>
+ return `<div class="qtop"><button class="iconbtn" data-a="quit" aria-label="Salir">${ico.x}</button><span class="tag">${boss?'JEFE':Q.mode==='repaso'?'Repaso de errores':'Entrenamiento'} · ${Q.i+1}/${Q.n}</span><span class="sp"></span>${boss?`<span class="tag">Errores ${Q.err}</span>`:`<span class="combo">${Q.combo>=2?'x'+Q.combo:''}</span>`}</div>
  <div class="tbar"><i id="tbar"></i></div>
- <div class="qcard" id="qc"><div class="mut">${c.type==='tab'?'¿Cuánto es?':'Sí o no'}</div><div class="qtext ${c.type==='prime'?'small':''}">${esc(c.q)}</div>${c.type==='tab'?`<div class="inp" id="inp">?</div>`:''}<div class="fb" id="fb"></div></div>
- ${c.type==='tab'?`<div class="pad">${[1,2,3,4,5,6,7,8,9].map(n=>`<button data-a="key" data-k="${n}">${n}</button>`).join('')}<button class="k3" data-a="key" data-k="del">Borrar</button><button data-a="key" data-k="0">0</button><button class="k2" data-a="key" data-k="ok">OK</button></div>`
+ <div class="qcard" id="qc"><div class="mut">${c.mc?'Elegí la respuesta':c.type==='sq'?'¿Cuánto es este cuadrado?':c.op==='s'?'¿Qué número sigue?':c.num?'¿Cuánto es?':'Sí o no'}</div><div class="qtext ${c.type==='tab'?'':'small'}">${esc(c.q)}</div>${c.num?`<div class="inp" id="inp">?</div>`:''}<div class="fb" id="fb"></div></div>
+ ${c.mc?`<div class="yn">${c.opts.map(o=>`<button class="mcb" data-a="mc" data-v="${o}">${o}</button>`).join('')}</div>`:c.num?`<div class="pad">${[1,2,3,4,5,6,7,8,9].map(n=>`<button data-a="key" data-k="${n}">${n}</button>`).join('')}<button class="k3" data-a="key" data-k="del">Borrar</button><button data-a="key" data-k="0">0</button><button class="k2" data-a="key" data-k="ok">OK</button></div>`
  :`<div class="yn"><button class="y" data-a="yn" data-v="1">SÍ</button><button class="n" data-a="yn" data-v="0">NO</button></div>`}`}
 
-function vReflex(){const lab=R.kind==='tab'?`Tocá los resultados de la tabla del ${R.N}`:'Tocá solo los números primos';
+function vReflex(){const lab=R.kind==='tab'?`Tocá los resultados de la tabla del ${R.N}`:R.kind==='half'?'Tocá solo las mitades correctas (ej: 9 → 4,5)':R.kind==='sq'?'Tocá solo los cuadrados (4, 9, 16, 25…)':R.kind==='parity'?`Tocá solo los números ${R.even?'PARES':'IMPARES'}`:R.kind==='tens'?`Tocá los de la serie ${R.s||10}, ${(R.s||10)+10}, ${(R.s||10)+20}… (de 10 en 10)`:'Tocá solo los números primos';
  return `<div class="qtop"><button class="iconbtn" data-a="quit" aria-label="Salir">${ico.x}</button><span class="tag">Reflejos</span><span class="sp"></span><span class="tag"><span id="rt">30</span> s</span></div>
  <h2 style="margin-top:14px">${lab}</h2><div class="row"><span class="tag">Aciertos <b id="rh">0</b> / ${R.need}</span><span class="tag">Errores <b id="rm">0</b></span></div>
- <div class="grid">${R.cells.map((c,i)=>`<button class="cell pop" data-a="cell" data-i="${i}" data-cell="${i}">${c.v}</button>`).join('')}</div>
+ <div class="grid">${R.cells.map((c,i)=>`<button class="cell pop${R.kind==='half'?' sm':''}" data-a="cell" data-i="${i}" data-cell="${i}">${c.v}</button>`).join('')}</div>
  <p class="onf" style="margin-top:12px">Los números cambian solos. Cada error resta.</p>`}
 
 function vResult(){const o=lastResult,i=o.li,ps=partState();const title=o.kind==='repaso'?'Repaso terminado':o.kind==='boss'?(o.pass?'¡Le ganaste al jefe!':'El jefe te ganó'):o.pass?'¡Ronda superada!':'Todavía no';
- const sub=o.kind==='boss'?(o.pass?'':'Tuviste más de 1 error. Repasá y volvé.'):o.kind==='reflex'?(o.pass?'':`Necesitabas ${o.need} aciertos y 70% de precisión.`):(o.pass?'':'Necesitabas 70% de respuestas correctas.');
- return `${o.unlock!==undefined?`<div class="hero">${robot(S.ia.model,ps)}</div><h1>Nueva pieza: ${PARTS[o.unlock]}</h1>`:`<h1>${title}</h1>`}${sub?`<p class="onf">${sub}</p>`:''}
+ const sub=o.kind==='boss'?(o.pass?'':'Al jefe se le gana sin errores. Repasá y volvé.'):o.kind==='reflex'?(o.pass?'':`Necesitabas ${o.need} aciertos y 70% de precisión.`):(o.pass?'':'Necesitabas 70% de respuestas correctas.');
+ return `${o.unlock!==undefined?`<div class="hero">${robot(S.ia.model,ps)}</div><h1>Nueva pieza: ${PARTS[o.unlock]}</h1>`:`<h1>${o.done?'¡Módulo superado!':title}</h1>`}${sub?`<p class="onf">${sub}</p>`:''}
  <div class="stats"><div class="stat"><b>+${o.gain}</b><span>Poder</span></div><div class="stat"><b>${Math.round((o.acc||0)*100)}%</b><span>Precisión</span></div><div class="stat"><b>${Math.round(o.sec)}s</b><span>Tiempo real</span></div></div>
  <div class="card"><ul class="list"><li>${o.ok} correctas de ${o.n}</li>${o.tx?`<li>Tiempo de práctica: +${o.tx} de poder</li>`:''}${o.notes.map(n=>`<li>${esc(n)}</li>`).join('')}${o.newB.map(n=>`<li><b>Nuevo logro: ${esc(n)}</b></li>`).join('')}</ul></div>
- ${o.unlock===7?`<button class="btn gold" data-a="go" data-v="logros">Ir al cofre final</button>`:''}
+ ${o.done&&i===totalLv()-1?`<button class="btn gold" data-a="go" data-v="logros">Ir al cofre final</button>`:''}
  <button class="btn" data-a="again" data-m="${o.kind}">${o.pass?'Jugar de nuevo':'Reintentar'}</button>${i>=0?`<button class="btn sec" data-a="level" data-i="${i}">Volver al módulo</button>`:''}<button class="btn sec" data-a="go" data-v="home">Ir al inicio</button>`}
 
-function vLogros(){const ps=partState(),open=doneCount()>=8&&!rustCount();
+function vLogros(){const ps=partState(),open=doneCount()>=totalLv()&&!rustCount();
  return `<h1>Logros</h1>
  <div class="card"><h3>Piezas de tu IA</h3><ul class="list">${PARTS.map((p,i)=>`<li class="row"><span class="sp">${i+1}. ${p}</span><span class="mut">${ps[i]==='on'?'Instalada':ps[i]==='rust'?'Oxidada':'Falta'}</span></li>`).join('')}</ul></div>
  <div class="card" style="text-align:center"><svg width="110" height="90" viewBox="0 0 110 90"><rect x="8" y="34" width="94" height="50" rx="8" fill="${open?'#ffc83d':'#c3c8ee'}"/><path d="M8 40 Q55 0 102 40Z" fill="${open?'#ff3d7f':'#9aa3e6'}"/><rect x="47" y="40" width="16" height="20" rx="4" fill="#131638"/></svg>
- <h2>Cofre final</h2><p class="mut">${open?'¡Tu IA es SUPER IA! Abrí el cofre.':'Se abre cuando completás los 8 módulos y no tenés piezas oxidadas.'}</p><button class="btn gold" data-a="chest" ${open?'':'disabled'}>Abrir cofre</button></div>
+ <h2>Cofre final</h2><p class="mut">${open?'¡Tu IA es SUPER IA! Abrí el cofre.':'Se abre cuando completás todos los módulos y no tenés piezas oxidadas.'}</p><button class="btn gold" data-a="chest" ${open?'':'disabled'}>Abrir cofre</button></div>
  <div class="card"><h3>Medallas · ${S.badges.length}/${BADGES.length}</h3><div class="badges">${BADGES.map((b,i)=>{const on=S.badges.includes(b[0]);return `<div class="badge ${on?'':'off'}">${badgeIco(i,on)}<div><b>${b[1]}</b></div><div class="mut">${b[2]}</div></div>`}).join('')}</div></div>
  <div class="card"><div class="row"><span class="sp">Mejor racha</span><b>${S.best} día${S.best===1?"":"s"}</b></div><div class="row"><span class="sp">Respuestas correctas</span><b>${S.tot.c}</b></div><div class="row"><span class="sp">Precisión total</span><b>${S.tot.t?Math.round(S.tot.c/S.tot.t*100):0}%</b></div></div>
  ${nav()}`}
@@ -418,7 +456,7 @@ function vDuel(){const me=summary(),oth=S.player==='delfi'?'santi':'delfi',rv=S.
  <button class="btn" data-a="copycode">Copiar mi código</button>
  <a class="btn sec" style="text-decoration:none" href="https://wa.me/?text=${encodeURIComponent(`*Duelo de IAs* — mi IA ${S.ia.name} tiene ${S.xp} de poder. Pegá este código en tu app:\n${code}`)}" target="_blank" rel="noopener">Mandar por WhatsApp</a></div>
  <div class="card"><h3>Código de ${TRACKS[oth].name}</h3><textarea id="rvcode" placeholder="Pegá acá el código que te mandaron"></textarea><button class="btn" data-a="loadrv">Cargar código</button></div>
- ${rv?`<div class="card"><div class="vs"><div>${robot(me.m,partState(),'sm')}<b>${esc(me.n)}</b><div class="mut">${TRACKS[me.p].name}</div></div><div class="big" style="font-size:28px">VS</div><div>${robot(rv.m,rv.lv.map(s=>s>=3?'on':'off'),'sm')}<b>${esc(rv.n)}</b><div class="mut">${TRACKS[rv.p].name}</div></div></div>
+ ${rv?`<div class="card"><div class="vs"><div>${robot(me.m,partState(),'sm')}<b>${esc(me.n)}</b><div class="mut">${TRACKS[me.p].name}</div></div><div class="big" style="font-size:28px">VS</div><div>${robot(rv.m,partsFrom(TRACKS[rv.p],i=>({st:(rv.lv||[])[i]||0})),'sm')}<b>${esc(rv.n)}</b><div class="mut">${TRACKS[rv.p].name}</div></div></div>
  ${cmpRows(me,rv)}
  <h2 style="text-align:center;margin-top:14px">${me.x>rv.x?'¡Vas ganando!':me.x<rv.x?`Gana ${esc(TRACKS[rv.p].name)}. A entrenar.`:'Empate'}</h2>
  <p class="mut" style="text-align:center">Código de ${TRACKS[rv.p].name} del ${esc(rv.dt)}${old>0?` (hace ${old} día${old>1?'s':''}: pedile uno nuevo)`:''}.</p></div>`:''}
@@ -427,7 +465,7 @@ function vDuel(){const me=summary(),oth=S.player==='delfi'?'santi':'delfi',rv=S.
 /* panel padre */
 function kidBlock(d){const lab=TRACKS[d.p].name;
  return `<div class="card"><div class="row"><h2 class="sp">${lab} · ${esc(d.n)}</h2><span class="mut">al ${esc(d.dt)}</span></div>
- <div class="row"><span class="sp">Día del desafío</span><b>${d.dn} de ${DAYS}</b></div><div class="row"><span class="sp">Poder</span><b>${d.x}</b></div><div class="row"><span class="sp">Módulos completos</span><b>${d.l}/8${d.r?` (${d.r} oxidado${d.r>1?'s':''})`:''}</b></div>
+ <div class="row"><span class="sp">Día del desafío</span><b>${d.dn} de ${DAYS}</b></div><div class="row"><span class="sp">Poder</span><b>${d.x}</b></div><div class="row"><span class="sp">Módulos completos</span><b>${d.l}/${TRACKS[d.p].levels.length}${d.r?` (${d.r} oxidado${d.r>1?'s':''})`:''}</b></div>
  <div class="row"><span class="sp">Días que entrenó</span><b>${d.dp}</b></div><div class="row"><span class="sp">Minutos reales</span><b>${d.mi}</b></div><div class="row"><span class="sp">Racha actual</span><b>${d.s}</b></div><div class="row"><span class="sp">Precisión total</span><b>${d.a}%</b></div>
  <h3 style="margin-top:12px">Precisión por tabla</h3>${T210.map(a=>{const v=d.tb[a];return `<div class="trow"><span>Tabla ${a}</span><div class="bar ${v>=80?'g':''}"><i style="width:${v||0}%"></i></div><b>${v==null?'—':v+'%'}</b></div>`}).join('')}
  <div class="trow"><span>Primos</span><div class="bar ${d.pr>=80?'g':''}"><i style="width:${d.pr||0}%"></i></div><b>${d.pr==null?'—':d.pr+'%'}</b></div></div>`}
@@ -438,7 +476,7 @@ function vPanel(){const kid=S.role==='kid';const d=kid?summary():null;
  ${kid?`${kidBlock(d)}
  <div class="card"><h3>Calendario del desafío</h3><p class="mut">Rosa fuerte: cumplió la misión (${MISSION/60} min). Rosa claro: entrenó menos.</p><div class="cal">${cal}</div></div>
  <div class="card"><h3>Lo que más le cuesta</h3>${weak.length?`<ul class="list">${weak.map(([k,f])=>`<li class="row"><span class="sp">${k[0]==='p'?'¿'+k.slice(1)+' es primo?':k.replace('x',' × ')}</span><span class="mut">${f.w} error${f.w>1?'es':''} · ${f.c} bien</span></li>`).join('')}</ul>`:'<p class="mut">Todavía sin errores registrados.</p>'}</div>
- <div class="card"><h3>Premio del cofre final</h3><p class="mut">Lo ve solo cuando completa los 8 módulos sin piezas oxidadas.</p><input id="prize" value="${esc(S.prize)}" placeholder="Ej: salida al cine con quien elija"><button class="btn" data-a="saveprize">Guardar premio</button></div>
+ <div class="card"><h3>Premio del cofre final</h3><p class="mut">Lo ve solo cuando completa todos los módulos sin piezas oxidadas.</p><input id="prize" value="${esc(S.prize)}" placeholder="Ej: salida al cine con quien elija"><button class="btn" data-a="saveprize">Guardar premio</button></div>
  <div class="card"><h3>Tiempo por pregunta</h3><select id="qt">${[6,8,10,12,15,20].map(n=>`<option value="${n}" ${qtime()===n?'selected':''}>${n} segundos</option>`).join('')}</select><button class="btn sec" data-a="saveqt">Guardar</button></div>
  <div class="card"><h3>Código de respaldo</h3><p class="mut">Guardalo (por ejemplo, mandátelo por WhatsApp). Si se borran los datos del celular, con este código recuperás la IA.</p><textarea id="bk" readonly>${esc(backupCode())}</textarea><button class="btn sec" data-a="copybk">Copiar respaldo</button></div>`
  :`<p class="onf">Pegá los códigos que te mandan los chicos desde la pestaña Duelo de su app.</p>
@@ -456,13 +494,13 @@ let pinBuf='';
 function pinModal(){pinBuf='';modal(`<h2 style="text-align:center">PIN de mamá</h2><div class="pin" id="pins">${'<i></i>'.repeat(4)}</div><div id="pinerr" class="mut" style="text-align:center;min-height:22px"></div>
  <div class="pad dk">${[1,2,3,4,5,6,7,8,9].map(n=>`<button data-a="pk" data-k="${n}">${n}</button>`).join('')}<button data-a="pinx" style="font-size:16px">Cancelar</button><button data-a="pk" data-k="0">0</button><button data-a="pk" data-k="del" style="font-size:16px">Borrar</button></div>`,true)}
 function decayModal(r){const l=r.rusted;modal(`<h2>${r.missed>=2?'Tu IA se olvidó cosas':'Perdiste la racha'}</h2>
- ${r.missed>=2?`<div style="text-align:center">${robot(S.ia.model,partState(),'sm')}</div><p>Pasaron <b>${r.missed} días</b> sin entrenar.</p><ul class="list"><li>Perdió <b>${r.lost}</b> de poder</li>${l!==null?`<li>Se oxidó: <b>${PARTS[l]}</b></li>`:''}<li>Racha: vuelve a 0</li></ul><p class="mut">Cada día más que pase, sigue olvidando.</p>`
+ ${r.missed>=2?`<div style="text-align:center">${robot(S.ia.model,partState(),'sm')}</div><p>Pasaron <b>${r.missed} días</b> sin entrenar.</p><ul class="list"><li>Perdió <b>${r.lost}</b> de poder</li>${l!==null?`<li>Se oxidó: <b>${track().levels[l].name}</b></li>`:''}<li>Racha: vuelve a 0</li></ul><p class="mut">Cada día más que pase, sigue olvidando.</p>`
  :`<p>Ayer no entrenaste: tu racha${r.hadStreak?` de ${r.hadStreak} días`:''} volvió a 0.</p><p class="mut"><b>Si hoy tampoco entrenás, tu IA empieza a olvidar y pierde poder.</b></p>`}
  <button class="btn" data-a="closem">A entrenar</button>`)}
 
 /* render */
 function stopLoops(){loopTok++;timers.forEach(t=>{clearInterval(t);clearTimeout(t)});timers=[]}
-function render(){stopLoops();const V={onb1:vOnb1,onb2:vOnb2,onb3:vOnb3,onb4:vOnb4,home:vHome,level:vLevel,quiz:vQuiz,reflex:vReflex,result:vResult,logros:vLogros,duel:vDuel,panel:vPanel}[view]||vHome;
+function render(){stopLoops();const V={lesson:vLesson,onb1:vOnb1,onb2:vOnb2,onb3:vOnb3,onb4:vOnb4,home:vHome,level:vLevel,quiz:vQuiz,reflex:vReflex,result:vResult,logros:vLogros,duel:vDuel,panel:vPanel}[view]||vHome;
  app.innerHTML=V();window.scrollTo(0,0);
  if(view==='quiz'){const tok=loopTok,bar=$('#tbar');const step=()=>{if(tok!==loopTok||!Q||Q.locked)return;const r=Math.max(0,1-(performance.now()-Q.t0)/1000/Q.limit);if(bar)bar.style.width=r*100+'%';if(r<=0){answer(null);return}requestAnimationFrame(step)};requestAnimationFrame(step)}
  if(view==='reflex')reflexLoop()}
@@ -476,8 +514,10 @@ function act(a,ds){
  case 'onbDone':view='home';render();break;
  case 'go':view=ds.v;render();break;
  case 'level':curLevel=+ds.i;view='level';render();break;
+ case 'lesson':pendingPlay=null;view='lesson';render();break;
+ case 'lessonok':{const lk=lessonKey(track().levels[curLevel]);S.seen=S.seen||{};S.seen[lk]=1;save();const m=pendingPlay;pendingPlay=null;if(!m){view='level';render()}else if(m==='reflex')startReflex(curLevel);else startQuiz(m,curLevel);break}
  case 'locked':toast('Primero ganale al jefe del módulo anterior');break;
- case 'play':if(ds.m==='reflex')startReflex(curLevel);else startQuiz(ds.m,curLevel);break;
+ case 'play':{const lk=lessonKey(track().levels[curLevel]);if(lk&&!(S.seen||{})[lk]){pendingPlay=ds.m;view='lesson';render();break}}if(ds.m==='reflex')startReflex(curLevel);else startQuiz(ds.m,curLevel);break;
  case 'again':curLevel=lastResult.li;if(ds.m==='repaso'){if(weakList().length)startQuiz('repaso',-1);else{toast('No te quedan errores pendientes');view='home';render()}}else if(ds.m==='reflex')startReflex(curLevel);else startQuiz(ds.m==='boss'?'boss':'train',curLevel);break;
  case 'repaso':if(weakList().length)startQuiz('repaso',-1);break;
  case 'quit':modal(`<h2>¿Abandonar?</h2><p>Si salís ahora, esta ronda no suma nada.</p><button class="btn" data-a="closem">Seguir jugando</button><button class="btn sec" data-a="doquit">Salir</button>`);break;
@@ -486,6 +526,7 @@ function act(a,ds){
  case 'key':{if(!Q)break;if(Q.fix===2){const k=ds.k;if(k==='del')Q.input=Q.input.slice(0,-1);else if(k==='ok'){fixKey();break}else if(Q.input.length<3)Q.input+=k;const el=$('#inp');if(el)el.textContent=Q.input||'?';fixKey();break}
   if(Q.locked)break;const k=ds.k;if(k==='del')Q.input=Q.input.slice(0,-1);else if(k==='ok'){if(Q.input)answer(Q.input);break}else if(Q.input.length<3)Q.input+=k;
   const el=$('#inp');if(el)el.textContent=Q.input||'?';if(Q.input.length===String(Q.cur.ans).length)answer(Q.input);break}
+ case 'mc':if(Q&&!Q.locked){const v=ds.v;document.querySelectorAll('.mcb').forEach(b=>{if(b.dataset.v===Q.cur.ans)b.classList.add('ok');else if(b.dataset.v===v)b.classList.add('no')});answer(v)}break;
  case 'yn':if(Q&&!Q.locked)answer(ds.v==='1');break;
  case 'cell':tapCell(+ds.i);break;
  case 'sound':S.sound=!S.sound;save();render();break;
@@ -507,7 +548,7 @@ function act(a,ds){
  case 'dorestore':{const d=readBackup($('#rs').value);if(!d){toast('Respaldo no válido');break}S=Object.assign(fresh(),d);save();closeModal();view=S.role==='kid'?'home':S.role==='parent'?'panel':'onb1';render();toast('IA restaurada');break}
  case 'reset':modal(`<h2>¿Borrar todo?</h2><p>Se pierde la IA, el progreso y los códigos de este celular. No se puede deshacer.</p><button class="btn sec" data-a="closem">Cancelar</button><button class="btn" data-a="doreset" style="background:var(--bad);box-shadow:none">Sí, borrar todo</button>`);break;
  case 'doreset':S=fresh();save();closeModal();view='onb1';render();break;
- case 'chest':if(doneCount()>=8&&!rustCount()){S.chest=true;save();sWin();modal(`<div style="text-align:center">${robot(S.ia.model,partState(),'sm')}<h2>¡SUPER IA!</h2><p>Tu premio:</p><p class="big" style="font-size:26px;color:var(--pink)">${S.prize?esc(S.prize):'Todavía no está cargado. Avisale a mamá que llegaste.'}</p><button class="btn" data-a="closem">Genial</button></div>`)}break;
+ case 'chest':if(doneCount()>=totalLv()&&!rustCount()){S.chest=true;save();sWin();modal(`<div style="text-align:center">${robot(S.ia.model,partState(),'sm')}<h2>¡SUPER IA!</h2><p>Tu premio:</p><p class="big" style="font-size:26px;color:var(--pink)">${S.prize?esc(S.prize):'Todavía no está cargado. Avisale a mamá que llegaste.'}</p><button class="btn" data-a="closem">Genial</button></div>`)}break;
  }
 }
 document.addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(!b)return;act(b.dataset.a,b.dataset)});
