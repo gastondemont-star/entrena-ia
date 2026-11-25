@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Entrená tu IA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=Rubik:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* VOICE: juego de laboratorio, enérgico, directo, para 11-14 años
+   IDEA: la consola de entrenamiento de un robot IA propio que crece o se oxida
+   PICTURE: el robot armado por piezas, grande, en el centro de cada pantalla
+   COLOUR and TYPE: campo cobalto, tarjetas blancas, rosa como acento, oro para premios; Chakra Petch + Rubik
+   LAYOUT: una columna de celular, robot arriba, misión, mapa vertical de módulos, barra inferior */
+:root{color-scheme:light dark;--field:light-dark(#2b45ee,#111a5e);--field2:light-dark(#3a55ff,#19257a);--card:light-dark(#ffffff,#1c2985);--ink:light-dark(#131638,#eef0ff);--mut:light-dark(#5b628f,#b4bbf5);--line:light-dark(#e3e6f6,#2d3ba0);--soft:light-dark(#eef1ff,#24339a);--pink:#ff3d7f;--gold:#ffc83d;--ok:#10b981;--bad:#ff5436;--rust:#a8603a}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0;-webkit-tap-highlight-color:transparent}
+html,body{margin:0}
+body{background:var(--field);color:#fff;font:16px/1.5 Rubik,system-ui,sans-serif;overflow-x:clip;min-height:100dvh}
+#app{max-width:520px;margin:0 auto;padding:calc(env(safe-area-inset-top) + 14px) 16px calc(env(safe-area-inset-bottom) + 100px)}
+h1,h2,h3,.num,.btn,.tag{font-family:'Chakra Petch',Rubik,sans-serif}
+h1{font-size:clamp(30px,8vw,42px);line-height:1.05;margin:8px 0 12px;text-wrap:balance}
+h2{font-size:22px;line-height:1.15;margin:0 0 8px}
+h3{font-size:17px;margin:0 0 4px}
+p{margin:0 0 10px}
+.card{background:var(--card);color:var(--ink);border-radius:22px;padding:18px;margin:12px 0;box-shadow:0 6px 0 rgba(0,0,20,.18)}
+.mut{color:var(--mut);font-size:14px}
+.onf{color:rgba(255,255,255,.82)}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:54px;border:0;border-radius:16px;background:var(--pink);color:#fff;font-size:18px;font-weight:700;cursor:pointer;box-shadow:0 5px 0 #b81f55;margin-top:10px}
+.btn:active{transform:translateY(3px);box-shadow:0 2px 0 #b81f55}
+.btn.sec{background:var(--soft);color:var(--ink);box-shadow:0 5px 0 var(--line)}
+.btn.gold{background:var(--gold);color:#3a2a00;box-shadow:0 5px 0 #c4921a}
+.btn.ghost{background:transparent;color:#fff;box-shadow:none;border:2px solid rgba(255,255,255,.5)}
+.btn[disabled]{opacity:.45;pointer-events:none}
+button{font:inherit}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.sp{flex:1}
+.tag{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:99px;background:rgba(255,255,255,.16);font-size:14px;font-weight:700;white-space:nowrap}
+.tag.dark{background:var(--soft);color:var(--ink)}
+.iconbtn{width:44px;height:44px;border-radius:14px;border:0;background:rgba(255,255,255,.16);color:#fff;display:grid;place-items:center;cursor:pointer}
+.hero{position:relative;text-align:center;padding:6px 0 4px}
+.bot{width:min(62vw,250px);height:auto;filter:drop-shadow(0 14px 0 rgba(0,0,30,.25));animation:float 3.4s ease-in-out infinite}
+.bot.sm{width:96px;filter:none;animation:none}
+@keyframes float{50%{transform:translateY(-8px)}}
+.flame{animation:flick .25s ease-in-out infinite alternate;transform-origin:center top}
+@keyframes flick{to{transform:scaleY(.7)}}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:8px}
+.stat{background:rgba(255,255,255,.13);border-radius:16px;padding:10px 6px;text-align:center}
+.stat b{display:block;font:700 24px/1.1 'Chakra Petch',sans-serif}
+.stat span{font-size:13px;color:rgba(255,255,255,.8)}
+.bar{height:12px;border-radius:99px;background:var(--soft);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--pink);border-radius:99px}
+.bar.g i{background:var(--ok)}
+.map{position:relative;margin-top:14px}
+.node{display:flex;gap:14px;align-items:center;width:100%;text-align:left;border:0;background:var(--card);color:var(--ink);border-radius:20px;padding:14px;margin:0 0 12px;cursor:pointer;box-shadow:0 5px 0 rgba(0,0,20,.18)}
+.node .ic{flex:none;width:52px;height:52px;border-radius:16px;display:grid;place-items:center;font:700 22px 'Chakra Petch',sans-serif;background:var(--soft);color:var(--mut)}
+.node.cur .ic{background:var(--pink);color:#fff}
+.node.done .ic{background:var(--ok);color:#fff}
+.node.rust .ic{background:var(--rust);color:#fff}
+.node.lock{opacity:.6}
+.stars{color:var(--gold);letter-spacing:2px;font-size:15px}
+.nav{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:center;gap:6px;padding:8px 10px calc(env(safe-area-inset-bottom) + 8px);background:var(--card);box-shadow:0 -4px 20px rgba(0,0,40,.2);z-index:5}
+.nav button{flex:1;max-width:160px;min-height:52px;border:0;background:none;color:var(--mut);font:600 13px Rubik;display:flex;flex-direction:column;align-items:center;gap:2px;border-radius:14px;cursor:pointer}
+.nav button.on{color:var(--pink);background:var(--soft)}
+.stage{display:flex;gap:12px;align-items:center}
+.stage .n{flex:none;width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:var(--soft);font:700 18px 'Chakra Petch',sans-serif}
+.stage.ok .n{background:var(--ok);color:#fff}
+.tip{background:var(--soft);border-radius:14px;padding:12px;font-size:15px;margin:8px 0}
+/* quiz */
+.qtop{display:flex;align-items:center;gap:10px}
+.tbar{height:10px;border-radius:99px;background:rgba(255,255,255,.2);overflow:hidden;margin:12px 0}
+.tbar i{display:block;height:100%;width:100%;background:var(--gold);border-radius:99px}
+.qcard{background:var(--card);color:var(--ink);border-radius:26px;padding:22px 16px;text-align:center;box-shadow:0 6px 0 rgba(0,0,20,.2);transition:background .15s}
+.qcard.good{background:#d9fbe9;color:#0b3b2a}
+.qcard.badq{box-shadow:0 0 0 5px var(--bad),0 6px 0 rgba(0,0,20,.2)}
+.right{font:700 clamp(40px,12vw,58px)/1.1 'Chakra Petch',sans-serif;color:var(--ink)}
+.right b{color:#fff;background:var(--ok);padding:0 14px;border-radius:14px;display:inline-block;animation:pop .35s}
+.wrong{color:var(--bad);font-size:30px}.late{color:var(--bad);font-size:20px;letter-spacing:0}
+.redo{margin-top:10px;color:var(--pink);font-size:18px}
+.warn{background:var(--bad);color:#fff;border-radius:16px;padding:12px 14px;margin:10px 0;font-weight:600}
+.qtext{font:700 clamp(40px,13vw,64px)/1.05 'Chakra Petch',sans-serif;margin:6px 0}
+.qtext.small{font-size:clamp(30px,9vw,44px)}
+.inp{font:700 44px/1 'Chakra Petch',sans-serif;min-height:56px;letter-spacing:4px;color:var(--pink)}
+.fb{min-height:48px;font-weight:700;font-size:17px;margin-top:6px}
+.pad{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:14px}
+.pad button{min-height:62px;border:0;border-radius:18px;background:rgba(255,255,255,.95);color:#131638;font:700 28px 'Chakra Petch',sans-serif;box-shadow:0 5px 0 rgba(0,0,30,.3);cursor:pointer}
+.pad button:active{transform:translateY(3px);box-shadow:0 2px 0 rgba(0,0,30,.3)}
+.pad .k2{background:var(--pink);color:#fff;font-size:20px}
+.pad .k3{background:rgba(255,255,255,.25);color:#fff;font-size:18px}
+.yn{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px}
+.yn button{min-height:84px;border:0;border-radius:22px;font:700 30px 'Chakra Petch',sans-serif;color:#fff;cursor:pointer;box-shadow:0 6px 0 rgba(0,0,30,.3)}
+.yn .y{background:var(--ok)}.yn .n{background:var(--bad)}
+.combo{color:var(--gold);font-weight:700}
+/* reflex */
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px}
+.cell{min-height:78px;border:0;border-radius:18px;background:var(--card);color:var(--ink);font:700 30px 'Chakra Petch',sans-serif;cursor:pointer;box-shadow:0 5px 0 rgba(0,0,30,.25);transition:transform .12s,background .12s}
+.cell.pop{animation:pop .25s}
+@keyframes pop{from{transform:scale(.6)}}
+.cell.hit{background:var(--ok);color:#fff}
+.cell.miss{background:var(--bad);color:#fff}
+.big{font:700 clamp(44px,14vw,72px)/1 'Chakra Petch',sans-serif}
+.list{margin:0;padding:0;list-style:none}
+.list li{padding:8px 0;border-bottom:1px solid var(--line)}
+.list li:last-child{border:0}
+.badges{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.badge{background:var(--soft);border-radius:16px;padding:12px;text-align:center}
+.badge.off{opacity:.45}
+.badge svg{width:46px;height:46px}
+.vs{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:8px;align-items:center;text-align:center}
+.cmp{display:grid;grid-template-columns:minmax(0,1fr) 92px minmax(0,1fr);gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);font-size:15px}
+.cmp b{font:700 18px 'Chakra Petch',sans-serif}
+.win{color:var(--ok)}
+input,select,textarea{width:100%;font:16px Rubik;padding:12px 14px;border-radius:14px;border:2px solid var(--line);background:var(--soft);color:var(--ink)}
+textarea{min-height:90px;resize:vertical;word-break:break-all}
+label{display:block;font-weight:600;margin:10px 0 4px}
+.models{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.model{border:3px solid transparent;border-radius:18px;background:var(--soft);color:var(--ink);padding:8px 4px;text-align:center;cursor:pointer}
+.model.on{border-color:var(--pink);background:var(--card)}
+.model b{display:block;font:700 16px 'Chakra Petch',sans-serif}
+.model span{font-size:12px;color:var(--mut)}
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
+.cal div{aspect-ratio:1;border-radius:7px;background:var(--soft);font-size:11px;display:grid;place-items:center;color:var(--mut)}
+.cal .h{background:#ffb3cc;color:#5a0b27}.cal .f{background:var(--pink);color:#fff}.cal .t{outline:2px solid var(--gold)}
+.trow{display:grid;grid-template-columns:70px minmax(0,1fr) 44px;gap:8px;align-items:center;margin:6px 0;font-size:14px}
+.ov{position:fixed;inset:0;background:rgba(5,8,40,.6);display:grid;place-items:center;padding:18px;z-index:20}
+.dlg{background:var(--card);color:var(--ink);border-radius:24px;padding:20px;width:min(440px,100%);max-height:88dvh;overflow:auto}
+.pin{display:flex;justify-content:center;gap:12px;margin:12px 0}
+.pin i{width:18px;height:18px;border-radius:50%;border:3px solid var(--mut)}
+.pin i.f{background:var(--pink);border-color:var(--pink)}
+.pad.dk button{background:var(--soft);color:var(--ink);box-shadow:0 4px 0 var(--line)}
+.step{display:flex;gap:12px;align-items:flex-start;margin:12px 0}
+.step .n{flex:none;width:34px;height:34px;border-radius:50%;background:var(--pink);color:#fff;display:grid;place-items:center;font:700 16px 'Chakra Petch',sans-serif}
+.toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 14px);transform:translateX(-50%);background:var(--gold);color:#3a2a00;padding:10px 18px;border-radius:99px;font-weight:700;z-index:30;box-shadow:0 6px 20px rgba(0,0,0,.25);max-width:92vw;text-align:center}
+@media (prefers-reduced-motion:reduce){.bot,.flame,.cell.pop{animation:none}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="modal"></div>
+<script>
+{
+const $=s=>document.querySelector(s);
+const app=$('#app'),modalEl=$('#modal');
+const KEY='entrenaTuIA_v1',SALT='entrena-ia-hermanos-26',MISSION=480,DAYS=28;
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function hash(str){let h=2166136261;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619)}return (h>>>0).toString(36)}
+const b64e=s=>btoa(unescape(encodeURIComponent(s)));
+const b64d=s=>decodeURIComponent(escape(atob(s)));
+function todayKey(d){d=d||new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+function dnum(k){const p=k.split('-').map(Number);return Math.round(Date.UTC(p[0],p[1]-1,p[2])/864e5)}
+const gap=(a,b)=>dnum(b)-dnum(a);
+const rnd=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
+function isPrime(n){if(n<2)return false;for(let i=2;i*i<=n;i++)if(n%i===0)return false;return true}
+function minFactor(n){for(let i=2;i*i<=n;i++)if(n%i===0)return i;return n}
+
+const MODELS={nova:{n:'NOVA',c:'#ff3d7f',d:'Rápida y curiosa'},byte:{n:'BYTE',c:'#ffc83d',d:'Precisa y calculadora'},titan:{n:'TITAN',c:'#00d1c1',d:'Fuerte y resistente'}};
+const PARTS=['Ojos láser','Antena','Brazos','Núcleo','Propulsores','Visor','Alas','Corona'];
+const T210=[2,3,4,5,6,7,8,9,10];
+const TRACKS={
+ delfi:{name:'Delfi',qt:12,bossQ:10,need:10,levels:[
+  {sub:'Tablas del 2, 5 y 10',tabs:[2,5,10]},{sub:'Tablas del 3 y 4',tabs:[3,4]},{sub:'Tabla del 6',tabs:[6]},{sub:'Tabla del 7',tabs:[7]},
+  {sub:'Tablas del 8 y 9',tabs:[8,9]},{sub:'Números primos hasta 20',max:20},{sub:'Números primos hasta 50',max:50},{sub:'Jefe final: todas las tablas y primos hasta 50',tabs:T210,max:50}]},
+ santi:{name:'Santi',qt:10,bossQ:12,need:12,levels:[
+  {sub:'Tablas del 2 al 5',tabs:[2,3,4,5]},{sub:'Tablas del 6 y 7',tabs:[6,7]},{sub:'Tablas del 8 y 9',tabs:[8,9]},{sub:'Turbo: tablas del 6 al 9 mezcladas',tabs:[6,7,8,9]},
+  {sub:'Números primos hasta 30',max:30},{sub:'Números primos hasta 100',max:100},{sub:'Todas las tablas del 2 al 10',tabs:T210},{sub:'Jefe final: todas las tablas y primos hasta 100',tabs:T210,max:100}]}
+};
+const TIPS={2:'La del 2 es el doble: 2 × 7 = 7 + 7 = 14.',3:'Contá de 3 en 3: 3, 6, 9, 12, 15, 18…',4:'La del 4 es el doble del doble: 4 × 6 → 6+6 = 12 → 12+12 = 24.',5:'Siempre termina en 0 o en 5. 5 × 8 es la mitad de 10 × 8 = 80 → 40.',6:'6 × n es el doble de 3 × n: 6 × 7 → 3 × 7 = 21 → 42.',7:'La más difícil. Truco: 5, 6, 7, 8 → 56 = 7 × 8.',8:'8 × n es doblar tres veces: 8 × 6 → 12 → 24 → 48.',9:'9 × n = 10 × n − n: 9 × 7 = 70 − 7 = 63.',10:'Agregale un 0: 10 × 6 = 60.'};
+const PRIME_TIP='Un número <b>primo</b> solo se puede dividir exacto por 1 y por sí mismo. 7 es primo. 9 no, porque 3 × 3 = 9. El 2 es el único primo par. Truco: si termina en 0, 2, 4, 6, 8 o 5 (y no es el 2 o el 5), <b>no</b> es primo.';
+const BADGES=[
+ ['r3','Racha x3','3 días seguidos entrenando',()=>S.streak>=3],
+ ['r7','Racha x7','Una semana sin fallar',()=>S.streak>=7],
+ ['r14','Racha x14','Dos semanas seguidas',()=>S.streak>=14],
+ ['c100','100 aciertos','100 respuestas correctas',()=>S.tot.c>=100],
+ ['c500','500 aciertos','500 respuestas correctas',()=>S.tot.c>=500],
+ ['m60','Una hora real','60 minutos de entrenamiento real',()=>S.tot.sec>=3600],
+ ['combo','Imparable','10 respuestas seguidas sin error',o=>!!o&&o.combo>=10],
+ ['perf','Jefe perfecto','Ganarle a un jefe sin errores',o=>!!o&&o.kind==='boss'&&o.pass&&o.err===0],
+ ['pri','Cazaprimos','Completar un módulo de primos',()=>track().levels.some((l,i)=>l.max&&!l.tabs&&Lget(i).st>=3)],
+ ['super','SUPER IA','Completar los 8 módulos',()=>doneCount()>=8]];
+
+function fresh(){return {v:1,role:null,player:null,ia:{name:'',model:'nova'},start:null,xp:0,lv:{},days:{},facts:{},streak:0,best:0,last:null,lastP:null,pen:0,badges:[],pin:'1234',prize:'',chest:false,sound:true,rivals:{},tot:{c:0,t:0,sec:0},qt:null}}
+let S;
+try{S=JSON.parse(localStorage.getItem(KEY))||fresh()}catch(e){S=fresh()}
+S=Object.assign(fresh(),S);
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+const STORE_OK=(()=>{try{localStorage.setItem('__t','1');const ok=localStorage.getItem('__t')==='1';localStorage.removeItem('__t');return ok}catch(e){return false}})();
+const LOADED=(()=>{try{return !!localStorage.getItem(KEY)}catch(e){return false}})();
+
+const track=()=>TRACKS[S.player]||TRACKS.delfi;
+const Lget=i=>Object.assign({st:0,stars:0,rust:false},S.lv[i]||{});
+const doneCount=()=>track().levels.filter((l,i)=>Lget(i).st>=3).length;
+const rustCount=()=>track().levels.filter((l,i)=>Lget(i).rust).length;
+const unlocked=i=>i===0||Lget(i-1).st>=3;
+const qtime=()=>S.qt||track().qt;
+const dayIdx=()=>S.start?gap(S.start,todayKey())+1:1;
+const partState=()=>PARTS.map((p,i)=>{const l=Lget(i);return l.st>=3?(l.rust?'rust':'on'):'off'});
+
+let view='home',Q=null,R=null,loopTok=0,timers=[],curLevel=0,lastResult=null,onbModel='nova',panelBack='home',audio=null;
+
+/* sonido */
+function beep(f,d,type){if(!S.sound)return;try{audio=audio||new (window.AudioContext||window.webkitAudioContext)();const o=audio.createOscillator(),g=audio.createGain();o.type=type||'sine';o.frequency.value=f;g.gain.setValueAtTime(.12,audio.currentTime);g.gain.exponentialRampToValueAtTime(.001,audio.currentTime+d);o.connect(g);g.connect(audio.destination);o.start();o.stop(audio.currentTime+d)}catch(e){}}
+const sOk=()=>{beep(660,.12);setTimeout(()=>beep(990,.15),90)},sBad=()=>beep(180,.3,'square'),sWin=()=>[523,659,784,1046].forEach((f,i)=>setTimeout(()=>beep(f,.2),i*120));
+
+function toast(t){const d=document.createElement('div');d.className='toast';d.textContent=t;document.body.appendChild(d);setTimeout(()=>d.remove(),2600)}
+
+/* robot */
+function robot(model,state,cls){
+ const c=(MODELS[model]||MODELS.nova).c,R='#a8603a',on=i=>state[i]!=='off',f=i=>state[i]==='rust'?R:c;
+ let s=`<svg class="bot ${cls||''}" viewBox="0 0 200 236" role="img" aria-label="Tu IA">`;
+ if(on(7))s+=`<ellipse cx="100" cy="14" rx="40" ry="9" fill="none" stroke="${state[7]==='rust'?R:'#ffc83d'}" stroke-width="6"/>`;
+ if(on(6))s+=`<path d="M64 128 L8 92 L18 156 L62 166Z" fill="${f(6)}" opacity=".9"/><path d="M136 128 L192 92 L182 156 L138 166Z" fill="${f(6)}" opacity=".9"/><path d="M64 128 L8 92 L30 130Z" fill="#fff" opacity=".35"/><path d="M136 128 L192 92 L170 130Z" fill="#fff" opacity=".35"/>`;
+ if(on(1))s+=`<line x1="100" y1="44" x2="100" y2="26" stroke="#dfe3ff" stroke-width="5" stroke-linecap="round"/><circle cx="100" cy="24" r="8" fill="${f(1)}"/>`;
+ if(on(2))s+=`<rect x="34" y="124" width="22" height="54" rx="11" fill="${f(2)}"/><rect x="144" y="124" width="22" height="54" rx="11" fill="${f(2)}"/><circle cx="45" cy="182" r="9" fill="#dfe3ff"/><circle cx="155" cy="182" r="9" fill="#dfe3ff"/>`;
+ if(on(4))s+=`<path class="flame" d="M76 194 L92 194 L84 226Z" fill="${state[4]==='rust'?R:'#ffc83d'}"/><path class="flame" d="M108 194 L124 194 L116 226Z" fill="${state[4]==='rust'?R:'#ffc83d'}"/><rect x="72" y="186" width="24" height="12" rx="4" fill="#9aa3e6"/><rect x="104" y="186" width="24" height="12" rx="4" fill="#9aa3e6"/>`;
+ else s+=`<rect x="76" y="186" width="16" height="22" rx="6" fill="#9aa3e6"/><rect x="108" y="186" width="16" height="22" rx="6" fill="#9aa3e6"/>`;
+ s+=`<rect x="62" y="118" width="76" height="72" rx="22" fill="#dfe3ff"/><rect x="62" y="118" width="70" height="66" rx="20" fill="#fff"/>`;
+ s+=on(3)?`<circle cx="100" cy="152" r="16" fill="${f(3)}" opacity=".3"/><circle cx="100" cy="152" r="10" fill="${f(3)}"/>`:`<circle cx="100" cy="152" r="10" fill="none" stroke="#c3c8ee" stroke-width="4"/>`;
+ s+=`<rect x="90" y="106" width="20" height="14" rx="4" fill="#c3c8ee"/><rect x="50" y="40" width="100" height="70" rx="24" fill="#dfe3ff"/><rect x="50" y="40" width="94" height="64" rx="22" fill="#fff"/><rect x="62" y="52" width="76" height="44" rx="15" fill="#131638"/>`;
+ s+=on(0)?`<circle cx="84" cy="74" r="12" fill="${f(0)}" opacity=".3"/><circle cx="116" cy="74" r="12" fill="${f(0)}" opacity=".3"/><circle cx="84" cy="74" r="7" fill="${f(0)}"/><circle cx="116" cy="74" r="7" fill="${f(0)}"/>`:`<rect x="78" y="72" width="12" height="4" rx="2" fill="#5b628f"/><rect x="110" y="72" width="12" height="4" rx="2" fill="#5b628f"/>`;
+ if(on(5))s+=`<rect x="58" y="62" width="84" height="24" rx="12" fill="${f(5)}" opacity=".35" stroke="${f(5)}" stroke-width="3"/>`;
+ return s+'</svg>';
+}
+const ico={
+ flame:'<svg width="18" height="18" viewBox="0 0 24 24"><path d="M12 2c1 4 6 6 6 12a6 6 0 0 1-12 0c0-3 2-5 3-6 0 2 1 3 2 3 0-4-1-6 1-9z" fill="#ffc83d"/></svg>',
+ lock:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>',
+ home:'<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg>',
+ duel:'<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 20l7-7M4 4l16 16M20 4l-7 7M14 20l6-6M4 14l6 6"/></svg>',
+ star:'<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg>',
+ x:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+ snd:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M17 8a5 5 0 0 1 0 8"/></svg>',
+ mute:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M17 9l5 6M22 9l-5 6"/></svg>',
+ share:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 3v12M7 8l5-5 5 5"/><rect x="5" y="11" width="14" height="10" rx="2"/></svg>'};
+function badgeIco(i,on){const c=on?['#ff3d7f','#ffc83d','#00d1c1','#10b981'][i%4]:'#9aa3e6';return `<svg viewBox="0 0 48 48"><path d="M24 3l18 10v22L24 45 6 35V13z" fill="${c}"/><path d="M24 12l3.5 7.2 7.9 1.1-5.7 5.6 1.3 7.9L24 30.1l-7 3.7 1.3-7.9-5.7-5.6 7.9-1.1z" fill="#fff" opacity=".9"/></svg>`}
+
+/* decaimiento por inactividad */
+function checkDecay(){
+ if(S.role!=='kid'||!S.last)return null;
+ const missed=gap(S.last,todayKey())-1;
+ if(missed<1||missed<=S.pen)return null;
+ const prev=S.pen;S.pen=missed;const hadStreak=S.streak;S.streak=0;
+ const newPen=Math.max(0,missed-1)-Math.max(0,prev-1);let lost=0,rusted=null;
+ if(newPen>0){
+  lost=Math.round(S.xp*Math.min(.25,.05*newPen));S.xp-=lost;
+  const cand=track().levels.map((l,i)=>i).filter(i=>Lget(i).st>=3&&!Lget(i).rust);
+  if(cand.length){const i=cand[rnd(0,cand.length-1)];const l=Lget(i);l.rust=true;S.lv[i]=l;rusted=i}
+ }
+ save();return {missed,lost,rusted,hadStreak};
+}
+
+/* preguntas */
+function pool(l){const o=[];if(l.tabs)for(const a of l.tabs)for(let b=1;b<=10;b++)o.push({k:a+'x'+b,type:'tab',a,b});if(l.max)for(let n=2;n<=l.max;n++)o.push({k:'p'+n,type:'prime',n});return o}
+/* errores: un fallo marca la cuenta como "débil" y sale mucho más seguido hasta acertarla 3 veces seguidas */
+function pickW(list,prev){let tot=0;const w=list.map(f=>{const s=S.facts[f.k]||{c:0,w:0};const x=f.k===prev&&list.length>1?0:s.weak?8:1+Math.min(3,Math.max(0,s.w-s.c*.5));tot+=x;return x});let r=Math.random()*tot;for(let i=0;i<list.length;i++){r-=w[i];if(r<=0)return list[i]}return list[list.length-1]}
+function keyFact(k){if(k[0]==='p')return {k,type:'prime',n:+k.slice(1)};const p=k.split('x');return {k,type:'tab',a:+p[0],b:+p[1]}}
+const weakList=()=>Object.keys(S.facts).filter(k=>S.facts[k].weak).map(keyFact);
+function mkQ(f){if(f.type==='tab'){const sw=Math.random()<.5;return Object.assign({},f,{a:sw?f.b:f.a,b:sw?f.a:f.b,q:sw?`${f.b} × ${f.a}`:`${f.a} × ${f.b}`,ans:f.a*f.b})}
+ return Object.assign({},f,{q:`¿${f.n} es primo?`,ans:isPrime(f.n)})}
+function nextQ(l,prev){if(l.weak){const wl=weakList();if(wl.length)return mkQ(pickW(wl,prev))}
+ const p=pool(l),tb=p.filter(f=>f.type==='tab'),pr=p.filter(f=>f.type==='prime');let list=tb.length&&pr.length?(Math.random()<.65?tb:pr):(tb.length?tb:pr);
+ if(list===pr){const y=pr.filter(f=>isPrime(f.n)),n=pr.filter(f=>!isPrime(f.n));list=Math.random()<.5?y:n}
+ return mkQ(pickW(list,prev))}
+function explain(c){if(c.type==='tab')return `${c.a} × ${c.b} = ${c.ans}`;if(c.ans)return `${c.n} SÍ es primo: solo se divide por 1 y por ${c.n}`;const p=minFactor(c.n);return `${c.n} NO es primo: ${p} × ${c.n/p} = ${c.n}`}
+
+function startQuiz(mode,li){const l=mode==='repaso'?{weak:true}:track().levels[li];const boss=mode==='boss';Q={mode,li,l,n:boss?track().bossQ:10,i:0,ok:0,err:0,combo:0,maxCombo:0,xp:0,sec:0,input:'',limit:boss?Math.round(qtime()*.85):qtime(),locked:false,fix:0,cur:null,prev:null,retry:[],cleared:0};newQ()}
+function newQ(){const r=Q.retry.findIndex(x=>x.due<=Q.i);Q.cur=r>=0?mkQ(Q.retry.splice(r,1)[0].f):nextQ(Q.l,Q.prev);Q.prev=Q.cur.k;Q.input='';Q.locked=false;Q.fix=0;Q.t0=performance.now();view='quiz';render()}
+function nextAfter(ms){timers.push(setTimeout(()=>{Q.i++;if((Q.mode==='boss'&&Q.err>1)||Q.i>=Q.n||(Q.mode==='repaso'&&!weakList().length&&!Q.retry.length))finishQuiz();else newQ()},ms))}
+function fixKey(){if(Q.input.length<String(Q.cur.ans).length)return;const el=$('#inp');
+ if(Number(Q.input)===Q.cur.ans){Q.fix=0;sOk();if(el){el.style.color='var(--ok)'}nextAfter(500)}
+ else{sBad();Q.input='';if(el){el.textContent='?'}}}
+function answer(val){if(!Q||Q.locked)return;Q.locked=true;const el=(performance.now()-Q.t0)/1000;Q.sec+=Math.min(el,Q.limit);
+ const c=Q.cur,right=val!==null&&(c.type==='tab'?Number(val)===c.ans:val===c.ans);
+ const f=S.facts[c.k]||(S.facts[c.k]={c:0,w:0});S.tot.t++;
+ const card=$('#qc'),fb=$('#fb'),tb=$('.tbar');
+ if(right){f.c++;f.s=(f.s||0)+1;if(f.weak&&f.s>=3){f.weak=false;Q.cleared++}S.tot.c++;Q.ok++;Q.combo++;Q.maxCombo=Math.max(Q.maxCombo,Q.combo);const sp=Math.max(0,Math.round(5*(1-el/Q.limit)));const g=10+sp+(Q.combo%5===0?5:0);Q.xp+=g;sOk();
+  if(card)card.classList.add('good');if(fb)fb.innerHTML=`Correcto +${g}${Q.combo>=3?` · combo x${Q.combo}`:''}`;save();nextAfter(600);return}
+ f.w++;f.s=0;f.weak=true;Q.err++;Q.combo=0;sBad();save();
+ if(Q.mode!=='boss')Q.retry.push({f:keyFact(c.k),due:Q.i+3});
+ if(card)card.classList.add('badq');if(tb)tb.style.visibility='hidden';
+ if(c.type==='tab'){Q.fix=1;const inp=$('#inp');if(inp)inp.innerHTML=val===null?'<span class="late">Se acabó el tiempo</span>':`<s class="wrong">${esc(val)}</s>`;
+  if(fb)fb.innerHTML=`<div class="right">${c.a} × ${c.b} = <b>${c.ans}</b></div>`;
+  timers.push(setTimeout(()=>{if(!Q||Q.fix!==1)return;Q.fix=2;Q.input='';const i2=$('#inp');if(i2)i2.textContent='?';const f2=$('#fb');if(f2)f2.insertAdjacentHTML('beforeend','<div class="redo">Ahora escribilo vos</div>')},1600))}
+ else{if(fb)fb.innerHTML=`<div class="right">${c.ans?'SÍ es primo':'NO es primo'}</div><div>${esc(explain(c))}</div>`;nextAfter(3000)}
+}
+function finishQuiz(){const q=Q;Q=null;const acc=q.ok/Math.max(1,q.i);let pass;
+ if(q.mode==='boss')pass=q.i>=q.n&&q.err<=1;else pass=acc>=.7;
+ endSession({kind:q.mode==='boss'?'boss':q.mode==='repaso'?'repaso':'train',li:q.li,ok:q.ok,n:q.i,err:q.err,sec:q.sec,xp:q.xp+q.cleared*10,combo:q.maxCombo,pass,acc,cleared:q.cleared})}
+
+/* reflejos */
+function startReflex(li){const l=track().levels[li];let kind=l.tabs&&l.max?(Math.random()<.5?'tab':'prime'):(l.tabs?'tab':'prime');const N=kind==='tab'?l.tabs[rnd(0,l.tabs.length-1)]:0;
+ R={li,kind,N,max:l.max||0,hits:0,miss:0,left:30,cells:[],need:track().need,t0:performance.now()};for(let i=0;i<12;i++)R.cells.push(mkCell());view='reflex';render()}
+function mkCell(){const good=Math.random()<.5;let v;
+ if(R.kind==='tab'){if(good)v=R.N*rnd(1,10);else{do{v=rnd(2,R.N*10)}while(v%R.N===0)}}
+ else{if(good){do{v=rnd(2,R.max)}while(!isPrime(v))}else{do{v=rnd(4,R.max)}while(isPrime(v))}}
+ return {v,good:R.kind==='tab'?v%R.N===0&&v<=R.N*10:isPrime(v),until:performance.now()+rnd(1600,3200)}}
+function drawCell(i,cls){const b=document.querySelector(`[data-cell="${i}"]`);if(!b)return;b.textContent=R.cells[i].v;b.className='cell pop'+(cls?' '+cls:'')}
+function tapCell(i){if(!R||R.left<=0)return;const c=R.cells[i];if(c.good){R.hits++;sOk()}else{R.miss++;sBad()}
+ const b=document.querySelector(`[data-cell="${i}"]`);if(b){b.className='cell '+(c.good?'hit':'miss')}
+ const nc=mkCell();R.cells[i]=nc;const tok=loopTok;setTimeout(()=>{if(tok===loopTok&&R)drawCell(i)},220);updReflex()}
+function updReflex(){const h=$('#rh');if(h)h.textContent=R.hits;const m=$('#rm');if(m)m.textContent=R.miss;const t=$('#rt');if(t)t.textContent=Math.ceil(R.left)}
+function reflexLoop(){const tok=loopTok;timers.push(setInterval(()=>{if(tok!==loopTok||!R)return;const now=performance.now();R.left=30-(now-R.t0)/1000;
+ R.cells.forEach((c,i)=>{if(now>c.until){R.cells[i]=mkCell();drawCell(i)}});updReflex();
+ if(R.left<=0){const r=R;R=null;const tot=r.hits+r.miss;const acc=tot?r.hits/tot:0;const pass=r.hits>=r.need&&acc>=.7;
+  endSession({kind:'reflex',li:r.li,ok:r.hits,n:tot,err:r.miss,sec:r.hits>=3?30:0,xp:Math.max(0,r.hits*5-r.miss*2),combo:0,pass,acc,need:r.need})}},150))}
+
+/* cierre de sesión */
+function endSession(o){const t=todayKey(),li=o.li,lv=Lget(li),notes=[];if(o.cleared)notes.push(`Dominaste ${o.cleared} cuenta${o.cleared>1?'s':''} que te costaba${o.cleared>1?'n':''}: +${o.cleared*10}`);let gain=o.xp;const tx=Math.round(o.sec/60*3);gain+=tx;
+ const d=S.days[t]||(S.days[t]={sec:0,s:0,c:0,t:0,m:0});d.sec+=o.sec;d.s++;d.c+=o.ok;d.t+=o.n;S.tot.sec+=o.sec;
+ if(S.lastP!==t){S.streak=(S.lastP&&gap(S.lastP,t)===1)?S.streak+1:1;S.lastP=t;notes.push(`Racha: ${S.streak} día${S.streak>1?'s':''} seguido${S.streak>1?'s':''}`)}
+ S.last=t;S.pen=0;S.best=Math.max(S.best,S.streak);
+ if(!d.m&&d.sec>=MISSION){d.m=1;gain+=40;notes.push('Misión del día cumplida: +40')}
+ if(o.kind==='train'&&o.pass){if(lv.rust&&o.acc>=.8){lv.rust=false;notes.push(`Reparaste ${PARTS[li]}: tu IA lo volvió a recordar`)}else if(lv.rust)notes.push('Para reparar la pieza oxidada necesitás 80% o más');if(lv.st<1)lv.st=1}
+ if(o.kind==='reflex'&&o.pass&&lv.st<2)lv.st=2;
+ if(o.kind==='boss'&&o.pass){if(lv.rust){lv.rust=false;notes.push(`Reparaste ${PARTS[li]}`)}if(lv.st<3){lv.st=3;gain+=100;o.unlock=li}lv.stars=Math.max(lv.stars||0,o.err===0?3:2)}
+ if(li>=0)S.lv[li]=lv;S.xp+=gain;o.gain=gain;o.tx=tx;o.notes=notes;o.newB=[];
+ for(const b of BADGES){if(!S.badges.includes(b[0])&&b[3](o)){S.badges.push(b[0]);o.newB.push(b[1])}}
+ save();lastResult=o;if(o.pass)sWin();view='result';render()}
+
+/* códigos */
+function summary(){const tb={};for(const a of T210){let c=0,w=0;for(let b=1;b<=10;b++){const f=S.facts[a+'x'+b];if(f){c+=f.c;w+=f.w}}if(c+w)tb[a]=Math.round(c/(c+w)*100)}
+ let pc=0,pw=0;for(const k in S.facts)if(k[0]==='p'){pc+=S.facts[k].c;pw+=S.facts[k].w}
+ return {p:S.player,n:S.ia.name,m:S.ia.model,x:S.xp,l:doneCount(),r:rustCount(),s:S.streak,mi:Math.round(S.tot.sec/60),a:S.tot.t?Math.round(S.tot.c/S.tot.t*100):0,dp:Object.keys(S.days).length,dt:todayKey(),dn:dayIdx(),tb,pr:pc+pw?Math.round(pc/(pc+pw)*100):null,lv:track().levels.map((l,i)=>Lget(i).st)}}
+function myCode(){const j=JSON.stringify(summary());return 'IA-'+b64e(j)+'.'+hash(j+SALT)}
+function readCode(str){try{const m=String(str).replace(/\s+/g,'').match(/IA-([A-Za-z0-9+/=]+)\.([a-z0-9]+)/);if(!m)return null;const j=b64d(m[1]);if(hash(j+SALT)!==m[2])return {bad:true};const d=JSON.parse(j);return d&&TRACKS[d.p]?d:null}catch(e){return null}}
+function backupCode(){const j=JSON.stringify(S);return 'RESP-'+b64e(j)+'.'+hash(j+SALT)}
+function readBackup(str){try{const m=String(str).replace(/\s+/g,'').match(/RESP-([A-Za-z0-9+/=]+)\.([a-z0-9]+)/);if(!m)return null;const j=b64d(m[1]);if(hash(j+SALT)!==m[2])return null;return JSON.parse(j)}catch(e){return null}}
+async function copy(txt,id){try{await navigator.clipboard.writeText(txt);toast('Copiado')}catch(e){const el=document.getElementById(id);if(el){el.focus();el.select();toast('Mantené apretado y copiá')}}}
+
+/* vistas */
+const nav=()=>`<nav class="nav"><button data-a="go" data-v="home" class="${view==='home'||view==='level'?'on':''}">${ico.home}Mi IA</button><button data-a="go" data-v="duel" class="${view==='duel'?'on':''}">${ico.duel}Duelo</button><button data-a="go" data-v="logros" class="${view==='logros'?'on':''}">${ico.star}Logros</button></nav>`;
+const stars=n=>'★'.repeat(n)+'☆'.repeat(3-n);
+
+function vOnb1(){return `<div class="hero">${robot('nova',['on','on','off','on','off','off','off','off'])}</div>
+ <h1>Tenés un desafío.</h1>
+ <p class="onf">Te asignaron una <b>IA recién creada</b>. Hoy no sabe nada: ni una tabla, ni un primo.</p>
+ <p class="onf">Tenés <b>${DAYS} días</b> para entrenarla y convertirla en una <b>SUPER IA</b>. Tu hermano o hermana tiene la suya. Gana la IA más poderosa.</p>
+ <div class="card"><h3>Qué le suma poder a tu IA</h3><ul class="list"><li>Respuestas correctas, y más si sos rápido</li><li>Combos de respuestas seguidas sin error</li><li>Minutos de entrenamiento <b>real</b> (dejarla abierta no cuenta)</li><li>Racha de días seguidos</li></ul>
+ <h3 style="margin-top:12px">Qué le quita poder</h3><ul class="list"><li>1 día sin entrenar: perdés la racha</li><li>2 días o más: tu IA <b>olvida</b>, pierde poder y una pieza se <b>oxida</b></li></ul></div>
+ <button class="btn" data-a="onb" data-s="2">Acepto el desafío</button>`}
+function vOnb2(){return `<h1>¿Quién sos?</h1><p class="onf">Cada uno tiene su propio camino de entrenamiento.</p>
+ <button class="btn" data-a="pick" data-p="delfi">Soy Delfi</button>
+ <button class="btn" data-a="pick" data-p="santi">Soy Santi</button>
+ <button class="btn ghost" style="margin-top:28px" data-a="pick" data-p="parent">Soy mamá (panel de control)</button>
+ <button class="btn ghost" data-a="restoreOnb">Tengo un código de respaldo</button>`}
+function vOnb3(){return `<h1>Elegí tu IA</h1><p class="onf">Las tres aprenden igual. Elegí la que más te guste.</p>
+ <div class="card"><div class="models">${Object.keys(MODELS).map(k=>`<button class="model ${onbModel===k?'on':''}" data-a="model" data-m="${k}">${robot(k,['on','on','on','on','off','off','off','off'],'sm')}<b>${MODELS[k].n}</b><span>${MODELS[k].d}</span></button>`).join('')}</div>
+ <label for="iname">Ponele nombre a tu IA</label><input id="iname" maxlength="14" placeholder="Ej: ${MODELS[onbModel].n}-${S.player==='santi'?'S':'D'}1" value="${esc(S.ia.name)}" autocomplete="off"></div>
+ <button class="btn" data-a="activate">Activar mi IA</button>`}
+function vOnb4(){return `<h1>Instalala como app</h1><p class="onf">Así la tenés en la pantalla de inicio y tu progreso queda mejor guardado.</p>
+ <div class="card"><div class="step"><div class="n">1</div><div>Abrí este link en <b>Safari</b>.</div></div>
+ <div class="step"><div class="n">2</div><div>Tocá el botón <b>Compartir</b> ${ico.share} (abajo, el cuadrado con la flecha).</div></div>
+ <div class="step"><div class="n">3</div><div>Bajá y tocá <b>"Agregar a inicio"</b>.</div></div>
+ <div class="step"><div class="n">4</div><div>Desde ahora abrila siempre desde ese ícono.</div></div>
+ <p class="mut">Importante: no borres los datos de Safari. Si los borrás, tu IA se pierde (salvo que tengas un código de respaldo).</p></div>
+ <button class="btn" data-a="onbDone">Listo, a entrenar</button>`}
+
+function vHome(){const T=track(),d=S.days[todayKey()]||{sec:0,m:0},mp=Math.min(100,Math.round(d.sec/MISSION*100)),dn=dayIdx(),ps=partState();
+ return `<div class="row"><span class="tag">${dn<=DAYS?`Día ${dn} de ${DAYS}`:'Tiempo extra'}</span><span class="tag">${ico.flame} ${S.streak}</span><span class="sp"></span>
+ <button class="iconbtn" data-a="sound" aria-label="Sonido">${S.sound?ico.snd:ico.mute}</button><button class="iconbtn" data-a="panel" aria-label="Panel de mamá">${ico.lock}</button></div>
+ <div class="hero">${robot(S.ia.model,ps)}<h1 style="margin:4px 0 0">${esc(S.ia.name)}</h1><div class="onf">${MODELS[S.ia.model].n} · entrenada por ${T.name}</div></div>
+ <div class="stats"><div class="stat"><b>${S.xp.toLocaleString('es-AR')}</b><span>Poder</span></div><div class="stat"><b>${doneCount()}/8</b><span>Módulos</span></div><div class="stat"><b>${Math.round(S.tot.sec/60)}</b><span>Minutos</span></div></div>
+ ${rustCount()?`<div class="card" style="border:3px solid var(--rust)"><h3>Tu IA tiene ${rustCount()} pieza${rustCount()>1?'s':''} oxidada${rustCount()>1?'s':''}</h3><p class="mut" style="margin:0">Por no entrenar, se olvidó. Entrá al módulo y hacé el Entrenamiento con 80% o más para repararla.</p></div>`:''}
+ ${STORE_OK?'':`<div class="warn">Este celular NO está guardando el progreso. Avisale a mamá antes de seguir jugando.</div>`}
+ ${weakList().length?`<div class="card" style="border:3px solid var(--pink)"><h3>Errores pendientes: ${weakList().length}</h3><p class="mut">Cuentas en las que te equivocaste. Cada una sale hasta que la aciertes 3 veces seguidas.</p><button class="btn" data-a="repaso">Repasar mis errores</button></div>`:''}
+ <div class="card"><div class="row"><h3>Misión del día</h3><span class="sp"></span><span class="mut">${d.m?'Cumplida':Math.floor(d.sec/60)+' de '+MISSION/60+' min'}</span></div><p class="mut">Entrená ${MISSION/60} minutos reales hoy: +40 de poder.</p><div class="bar ${d.m?'g':''}"><i style="width:${mp}%"></i></div></div>
+ <h2 style="margin-top:20px">Módulos de entrenamiento</h2>
+ <div class="map">${T.levels.map((l,i)=>{const L=Lget(i),u=unlocked(i);const st=L.rust?'rust':L.st>=3?'done':u?'cur':'lock';
+  return `<button class="node ${st}" data-a="${u?'level':'locked'}" data-i="${i}"><div class="ic">${i+1}</div><div class="sp"><h3>${PARTS[i]}</h3><div class="mut">${l.sub}</div>${L.st>=3?`<div class="stars">${stars(L.stars||0)}</div>`:''}</div><div class="mut">${st==='rust'?'Oxidado':st==='done'?'Listo':st==='cur'?(L.st?L.st+'/3':'Nuevo'):'Bloqueado'}</div></button>`}).join('')}</div>
+ ${nav()}`}
+
+function vLevel(){const i=curLevel,l=track().levels[i],L=Lget(i);
+ const tips=l.tabs&&l.tabs.length<=4?l.tabs.map(a=>`<div class="tip"><b>Tabla del ${a}.</b> ${TIPS[a]}</div>`).join(''):l.tabs?'<div class="tip">Mezcla de tablas: lo que más te cuesta va a aparecer más seguido hasta que lo domines.</div>':'';
+ const pt=l.max?`<div class="tip">${PRIME_TIP}</div>`:'';
+ const st=[['Entrenamiento','10 preguntas contra reloj. Pasás con 70%.'+(L.rust?' Con 80% reparás la pieza oxidada.':''),'train'],['Reflejos','30 segundos. Tocá solo los correctos. Meta: '+track().need+' aciertos.','reflex'],['Jefe','Ronda final más rápida. Podés errar 1 sola vez.','boss']];
+ return `<div class="row"><button class="iconbtn" data-a="go" data-v="home" aria-label="Volver">${ico.x}</button><span class="sp"></span><span class="tag">Módulo ${i+1}</span></div>
+ <h1>${PARTS[i]}</h1><p class="onf">${l.sub}. Al ganarle al jefe, tu IA consigue: <b>${PARTS[i]}</b>.</p>
+ ${L.rust?`<div class="card" style="border:3px solid var(--rust)"><b>Pieza oxidada.</b> Tu IA olvidó este módulo. Hacé el Entrenamiento con 80% o más (o ganale al jefe) para repararla.</div>`:''}
+ <div class="card"><h3>Briefing</h3>${pt}${tips}</div>
+ ${st.map((s,k)=>{const ok=L.st>k,open=k===0||L.st>=k;return `<div class="card"><div class="stage ${ok?'ok':''}"><div class="n">${ok?'✓':k+1}</div><div class="sp"><h3>${s[0]}</h3><div class="mut">${s[1]}</div></div></div><button class="btn ${ok?'sec':''}" data-a="play" data-m="${s[2]}" ${open?'':'disabled'}>${!open?'Bloqueado':ok?'Repetir (suma poder)':'Jugar'}</button></div>`}).join('')}
+ ${nav()}`}
+
+function vQuiz(){const c=Q.cur,boss=Q.mode==='boss';
+ return `<div class="qtop"><button class="iconbtn" data-a="quit" aria-label="Salir">${ico.x}</button><span class="tag">${boss?'JEFE':Q.mode==='repaso'?'Repaso de errores':'Entrenamiento'} · ${Q.i+1}/${Q.n}</span><span class="sp"></span>${boss?`<span class="tag">Errores ${Q.err}/1</span>`:`<span class="combo">${Q.combo>=2?'x'+Q.combo:''}</span>`}</div>
+ <div class="tbar"><i id="tbar"></i></div>
+ <div class="qcard" id="qc"><div class="mut">${c.type==='tab'?'¿Cuánto es?':'Sí o no'}</div><div class="qtext ${c.type==='prime'?'small':''}">${esc(c.q)}</div>${c.type==='tab'?`<div class="inp" id="inp">?</div>`:''}<div class="fb" id="fb"></div></div>
+ ${c.type==='tab'?`<div class="pad">${[1,2,3,4,5,6,7,8,9].map(n=>`<button data-a="key" data-k="${n}">${n}</button>`).join('')}<button class="k3" data-a="key" data-k="del">Borrar</button><button data-a="key" data-k="0">0</button><button class="k2" data-a="key" data-k="ok">OK</button></div>`
+ :`<div class="yn"><button class="y" data-a="yn" data-v="1">SÍ</button><button class="n" data-a="yn" data-v="0">NO</button></div>`}`}
+
+function vReflex(){const lab=R.kind==='tab'?`Tocá los resultados de la tabla del ${R.N}`:'Tocá solo los números primos';
+ return `<div class="qtop"><button class="iconbtn" data-a="quit" aria-label="Salir">${ico.x}</button><span class="tag">Reflejos</span><span class="sp"></span><span class="tag"><span id="rt">30</span> s</span></div>
+ <h2 style="margin-top:14px">${lab}</h2><div class="row"><span class="tag">Aciertos <b id="rh">0</b> / ${R.need}</span><span class="tag">Errores <b id="rm">0</b></span></div>
+ <div class="grid">${R.cells.map((c,i)=>`<button class="cell pop" data-a="cell" data-i="${i}" data-cell="${i}">${c.v}</button>`).join('')}</div>
+ <p class="onf" style="margin-top:12px">Los números cambian solos. Cada error resta.</p>`}
+
+function vResult(){const o=lastResult,i=o.li,ps=partState();const title=o.kind==='repaso'?'Repaso terminado':o.kind==='boss'?(o.pass?'¡Le ganaste al jefe!':'El jefe te ganó'):o.pass?'¡Ronda superada!':'Todavía no';
+ const sub=o.kind==='boss'?(o.pass?'':'Tuviste más de 1 error. Repasá y volvé.'):o.kind==='reflex'?(o.pass?'':`Necesitabas ${o.need} aciertos y 70% de precisión.`):(o.pass?'':'Necesitabas 70% de respuestas correctas.');
+ return `${o.unlock!==undefined?`<div class="hero">${robot(S.ia.model,ps)}</div><h1>Nueva pieza: ${PARTS[o.unlock]}</h1>`:`<h1>${title}</h1>`}${sub?`<p class="onf">${sub}</p>`:''}
+ <div class="stats"><div class="stat"><b>+${o.gain}</b><span>Poder</span></div><div class="stat"><b>${Math.round((o.acc||0)*100)}%</b><span>Precisión</span></div><div class="stat"><b>${Math.round(o.sec)}s</b><span>Tiempo real</span></div></div>
+ <div class="card"><ul class="list"><li>${o.ok} correctas de ${o.n}</li>${o.tx?`<li>Tiempo de práctica: +${o.tx} de poder</li>`:''}${o.notes.map(n=>`<li>${esc(n)}</li>`).join('')}${o.newB.map(n=>`<li><b>Nuevo logro: ${esc(n)}</b></li>`).join('')}</ul></div>
+ ${o.unlock===7?`<button class="btn gold" data-a="go" data-v="logros">Ir al cofre final</button>`:''}
+ <button class="btn" data-a="again" data-m="${o.kind}">${o.pass?'Jugar de nuevo':'Reintentar'}</button>${i>=0?`<button class="btn sec" data-a="level" data-i="${i}">Volver al módulo</button>`:''}<button class="btn sec" data-a="go" data-v="home">Ir al inicio</button>`}
+
+function vLogros(){const ps=partState(),open=doneCount()>=8&&!rustCount();
+ return `<h1>Logros</h1>
+ <div class="card"><h3>Piezas de tu IA</h3><ul class="list">${PARTS.map((p,i)=>`<li class="row"><span class="sp">${i+1}. ${p}</span><span class="mut">${ps[i]==='on'?'Instalada':ps[i]==='rust'?'Oxidada':'Falta'}</span></li>`).join('')}</ul></div>
+ <div class="card" style="text-align:center"><svg width="110" height="90" viewBox="0 0 110 90"><rect x="8" y="34" width="94" height="50" rx="8" fill="${open?'#ffc83d':'#c3c8ee'}"/><path d="M8 40 Q55 0 102 40Z" fill="${open?'#ff3d7f':'#9aa3e6'}"/><rect x="47" y="40" width="16" height="20" rx="4" fill="#131638"/></svg>
+ <h2>Cofre final</h2><p class="mut">${open?'¡Tu IA es SUPER IA! Abrí el cofre.':'Se abre cuando completás los 8 módulos y no tenés piezas oxidadas.'}</p><button class="btn gold" data-a="chest" ${open?'':'disabled'}>Abrir cofre</button></div>
+ <div class="card"><h3>Medallas · ${S.badges.length}/${BADGES.length}</h3><div class="badges">${BADGES.map((b,i)=>{const on=S.badges.includes(b[0]);return `<div class="badge ${on?'':'off'}">${badgeIco(i,on)}<div><b>${b[1]}</b></div><div class="mut">${b[2]}</div></div>`}).join('')}</div></div>
+ <div class="card"><div class="row"><span class="sp">Mejor racha</span><b>${S.best} día${S.best===1?"":"s"}</b></div><div class="row"><span class="sp">Respuestas correctas</span><b>${S.tot.c}</b></div><div class="row"><span class="sp">Precisión total</span><b>${S.tot.t?Math.round(S.tot.c/S.tot.t*100):0}%</b></div></div>
+ ${nav()}`}
+
+function cmpRows(a,b){const rows=[['Poder','x'],['Módulos','l'],['Racha','s'],['Minutos reales','mi'],['Precisión %','a'],['Días entrenados','dp']];
+ return rows.map(r=>{const x=a[r[1]]||0,y=b[r[1]]||0;return `<div class="cmp"><b class="${x>y?'win':''}" style="text-align:right">${x}</b><span class="mut" style="text-align:center">${r[0]}</span><b class="${y>x?'win':''}">${y}</b></div>`}).join('')}
+function vDuel(){const me=summary(),oth=S.player==='delfi'?'santi':'delfi',rv=S.rivals[oth],code=myCode();
+ const old=rv?gap(rv.dt,todayKey()):0;
+ return `<h1>Duelo de IAs</h1><p class="onf">Mandale tu código a ${TRACKS[oth].name} por WhatsApp y pegá el suyo acá. Cada código es una foto de tu IA en ese momento.</p>
+ <div class="card"><h3>Mi código de hoy</h3><textarea id="mycode" readonly>${esc(code)}</textarea>
+ <button class="btn" data-a="copycode">Copiar mi código</button>
+ <a class="btn sec" style="text-decoration:none" href="https://wa.me/?text=${encodeURIComponent(`*Duelo de IAs* — mi IA ${S.ia.name} tiene ${S.xp} de poder. Pegá este código en tu app:\n${code}`)}" target="_blank" rel="noopener">Mandar por WhatsApp</a></div>
+ <div class="card"><h3>Código de ${TRACKS[oth].name}</h3><textarea id="rvcode" placeholder="Pegá acá el código que te mandaron"></textarea><button class="btn" data-a="loadrv">Cargar código</button></div>
+ ${rv?`<div class="card"><div class="vs"><div>${robot(me.m,partState(),'sm')}<b>${esc(me.n)}</b><div class="mut">${TRACKS[me.p].name}</div></div><div class="big" style="font-size:28px">VS</div><div>${robot(rv.m,rv.lv.map(s=>s>=3?'on':'off'),'sm')}<b>${esc(rv.n)}</b><div class="mut">${TRACKS[rv.p].name}</div></div></div>
+ ${cmpRows(me,rv)}
+ <h2 style="text-align:center;margin-top:14px">${me.x>rv.x?'¡Vas ganando!':me.x<rv.x?`Gana ${esc(TRACKS[rv.p].name)}. A entrenar.`:'Empate'}</h2>
+ <p class="mut" style="text-align:center">Código de ${TRACKS[rv.p].name} del ${esc(rv.dt)}${old>0?` (hace ${old} día${old>1?'s':''}: pedile uno nuevo)`:''}.</p></div>`:''}
+ ${nav()}`}
+
+/* panel padre */
+function kidBlock(d){const lab=TRACKS[d.p].name;
+ return `<div class="card"><div class="row"><h2 class="sp">${lab} · ${esc(d.n)}</h2><span class="mut">al ${esc(d.dt)}</span></div>
+ <div class="row"><span class="sp">Día del desafío</span><b>${d.dn} de ${DAYS}</b></div><div class="row"><span class="sp">Poder</span><b>${d.x}</b></div><div class="row"><span class="sp">Módulos completos</span><b>${d.l}/8${d.r?` (${d.r} oxidado${d.r>1?'s':''})`:''}</b></div>
+ <div class="row"><span class="sp">Días que entrenó</span><b>${d.dp}</b></div><div class="row"><span class="sp">Minutos reales</span><b>${d.mi}</b></div><div class="row"><span class="sp">Racha actual</span><b>${d.s}</b></div><div class="row"><span class="sp">Precisión total</span><b>${d.a}%</b></div>
+ <h3 style="margin-top:12px">Precisión por tabla</h3>${T210.map(a=>{const v=d.tb[a];return `<div class="trow"><span>Tabla ${a}</span><div class="bar ${v>=80?'g':''}"><i style="width:${v||0}%"></i></div><b>${v==null?'—':v+'%'}</b></div>`}).join('')}
+ <div class="trow"><span>Primos</span><div class="bar ${d.pr>=80?'g':''}"><i style="width:${d.pr||0}%"></i></div><b>${d.pr==null?'—':d.pr+'%'}</b></div></div>`}
+function vPanel(){const kid=S.role==='kid';const d=kid?summary():null;
+ const weak=kid?Object.entries(S.facts).filter(([k,f])=>f.w>0).sort((a,b)=>(b[1].w-b[1].c*.3)-(a[1].w-a[1].c*.3)).slice(0,8):[];
+ const cal=kid&&S.start?Array.from({length:DAYS},(_,i)=>{const dd=new Date(...S.start.split('-').map((v,j)=>j===1?v-1:+v));dd.setDate(dd.getDate()+i);const k=todayKey(dd),x=S.days[k];return `<div class="${x?(x.sec>=MISSION?'f':'h'):''} ${k===todayKey()?'t':''}">${i+1}</div>`}).join(''):'';
+ return `<div class="row"><h1 class="sp" style="margin:0">Panel de mamá</h1>${kid?`<button class="iconbtn" data-a="closepanel" aria-label="Cerrar">${ico.x}</button>`:''}</div>
+ ${kid?`${kidBlock(d)}
+ <div class="card"><h3>Calendario del desafío</h3><p class="mut">Rosa fuerte: cumplió la misión (${MISSION/60} min). Rosa claro: entrenó menos.</p><div class="cal">${cal}</div></div>
+ <div class="card"><h3>Lo que más le cuesta</h3>${weak.length?`<ul class="list">${weak.map(([k,f])=>`<li class="row"><span class="sp">${k[0]==='p'?'¿'+k.slice(1)+' es primo?':k.replace('x',' × ')}</span><span class="mut">${f.w} error${f.w>1?'es':''} · ${f.c} bien</span></li>`).join('')}</ul>`:'<p class="mut">Todavía sin errores registrados.</p>'}</div>
+ <div class="card"><h3>Premio del cofre final</h3><p class="mut">Lo ve solo cuando completa los 8 módulos sin piezas oxidadas.</p><input id="prize" value="${esc(S.prize)}" placeholder="Ej: salida al cine con quien elija"><button class="btn" data-a="saveprize">Guardar premio</button></div>
+ <div class="card"><h3>Tiempo por pregunta</h3><select id="qt">${[6,8,10,12,15,20].map(n=>`<option value="${n}" ${qtime()===n?'selected':''}>${n} segundos</option>`).join('')}</select><button class="btn sec" data-a="saveqt">Guardar</button></div>
+ <div class="card"><h3>Código de respaldo</h3><p class="mut">Guardalo (por ejemplo, mandátelo por WhatsApp). Si se borran los datos del celular, con este código recuperás la IA.</p><textarea id="bk" readonly>${esc(backupCode())}</textarea><button class="btn sec" data-a="copybk">Copiar respaldo</button></div>`
+ :`<p class="onf">Pegá los códigos que te mandan los chicos desde la pestaña Duelo de su app.</p>
+ <div class="card"><textarea id="pcode" placeholder="Pegá un código acá"></textarea><button class="btn" data-a="loadp">Cargar código</button></div>
+ ${['delfi','santi'].map(p=>S.rivals[p]?kidBlock(S.rivals[p]):`<div class="card"><h3>${TRACKS[p].name}</h3><p class="mut" style="margin:0">Sin código cargado.</p></div>`).join('')}`}
+ <div class="card"><h3>Validar un código</h3><p class="mut">Pegá un código para ver si es auténtico o si lo modificaron.</p><textarea id="vcode"></textarea><button class="btn sec" data-a="validate">Validar</button><div id="vres" class="fb"></div></div>
+ <div class="card"><h3>Diagnóstico de guardado</h3><p class="mut" style="margin:0">Guardado en este navegador: <b style="color:${STORE_OK?'var(--ok)':'var(--bad)'}">${STORE_OK?'funciona':'NO funciona'}</b>. Al abrir la app ${LOADED?'<b style="color:var(--ok)">encontró</b>':'<b style="color:var(--bad)">no encontró</b>'} datos guardados de antes.${S.created?` Primer uso en este celular: ${esc(new Date(S.created).toLocaleString('es-AR'))}.`:''}</p></div>
+ <div class="card"><h3>Ajustes</h3><label for="npin">Nuevo PIN (4 números)</label><input id="npin" inputmode="numeric" maxlength="4" pattern="[0-9]*"><button class="btn sec" data-a="savepin">Cambiar PIN</button>
+ <button class="btn sec" data-a="restore">Restaurar desde un respaldo</button><button class="btn sec" data-a="reset" style="color:var(--bad)">Borrar todo en este celular</button></div>`}
+
+/* modales */
+function modal(h,solid){modalEl.innerHTML=`<div class="ov"${solid?' style="background:var(--field)"':''}><div class="dlg">${h}</div></div>`}
+function closeModal(){modalEl.innerHTML=''}
+let pinBuf='';
+function pinModal(){pinBuf='';modal(`<h2 style="text-align:center">PIN de mamá</h2><div class="pin" id="pins">${'<i></i>'.repeat(4)}</div><div id="pinerr" class="mut" style="text-align:center;min-height:22px"></div>
+ <div class="pad dk">${[1,2,3,4,5,6,7,8,9].map(n=>`<button data-a="pk" data-k="${n}">${n}</button>`).join('')}<button data-a="pinx" style="font-size:16px">Cancelar</button><button data-a="pk" data-k="0">0</button><button data-a="pk" data-k="del" style="font-size:16px">Borrar</button></div>`,true)}
+function decayModal(r){const l=r.rusted;modal(`<h2>${r.missed>=2?'Tu IA se olvidó cosas':'Perdiste la racha'}</h2>
+ ${r.missed>=2?`<div style="text-align:center">${robot(S.ia.model,partState(),'sm')}</div><p>Pasaron <b>${r.missed} días</b> sin entrenar.</p><ul class="list"><li>Perdió <b>${r.lost}</b> de poder</li>${l!==null?`<li>Se oxidó: <b>${PARTS[l]}</b></li>`:''}<li>Racha: vuelve a 0</li></ul><p class="mut">Cada día más que pase, sigue olvidando.</p>`
+ :`<p>Ayer no entrenaste: tu racha${r.hadStreak?` de ${r.hadStreak} días`:''} volvió a 0.</p><p class="mut"><b>Si hoy tampoco entrenás, tu IA empieza a olvidar y pierde poder.</b></p>`}
+ <button class="btn" data-a="closem">A entrenar</button>`)}
+
+/* render */
+function stopLoops(){loopTok++;timers.forEach(t=>{clearInterval(t);clearTimeout(t)});timers=[]}
+function render(){stopLoops();const V={onb1:vOnb1,onb2:vOnb2,onb3:vOnb3,onb4:vOnb4,home:vHome,level:vLevel,quiz:vQuiz,reflex:vReflex,result:vResult,logros:vLogros,duel:vDuel,panel:vPanel}[view]||vHome;
+ app.innerHTML=V();window.scrollTo(0,0);
+ if(view==='quiz'){const tok=loopTok,bar=$('#tbar');const step=()=>{if(tok!==loopTok||!Q||Q.locked)return;const r=Math.max(0,1-(performance.now()-Q.t0)/1000/Q.limit);if(bar)bar.style.width=r*100+'%';if(r<=0){answer(null);return}requestAnimationFrame(step)};requestAnimationFrame(step)}
+ if(view==='reflex')reflexLoop()}
+
+function act(a,ds){
+ switch(a){
+ case 'onb':view='onb'+ds.s;render();break;
+ case 'pick':if(ds.p==='parent'){S.role='parent';save();view='panel';render();pinModal()}else{S.player=ds.p;view='onb3';render()}break;
+ case 'model':{const nm=$('#iname');if(nm)S.ia.name=nm.value;onbModel=ds.m;render();break}
+ case 'activate':{const nm=($('#iname').value||'').trim();S.ia={name:nm||MODELS[onbModel].n+'-'+(S.player==='santi'?'S':'D')+'1',model:onbModel};S.role='kid';S.created=S.created||Date.now();S.start=S.start||todayKey();S.last=S.last||todayKey();save();view='onb4';render();break}
+ case 'onbDone':view='home';render();break;
+ case 'go':view=ds.v;render();break;
+ case 'level':curLevel=+ds.i;view='level';render();break;
+ case 'locked':toast('Primero ganale al jefe del módulo anterior');break;
+ case 'play':if(ds.m==='reflex')startReflex(curLevel);else startQuiz(ds.m,curLevel);break;
+ case 'again':curLevel=lastResult.li;if(ds.m==='repaso'){if(weakList().length)startQuiz('repaso',-1);else{toast('No te quedan errores pendientes');view='home';render()}}else if(ds.m==='reflex')startReflex(curLevel);else startQuiz(ds.m==='boss'?'boss':'train',curLevel);break;
+ case 'repaso':if(weakList().length)startQuiz('repaso',-1);break;
+ case 'quit':modal(`<h2>¿Abandonar?</h2><p>Si salís ahora, esta ronda no suma nada.</p><button class="btn" data-a="closem">Seguir jugando</button><button class="btn sec" data-a="doquit">Salir</button>`);break;
+ case 'doquit':closeModal();view=Q&&Q.li<0?'home':'level';Q=null;R=null;render();break;
+ case 'closem':closeModal();break;
+ case 'key':{if(!Q)break;if(Q.fix===2){const k=ds.k;if(k==='del')Q.input=Q.input.slice(0,-1);else if(k==='ok'){fixKey();break}else if(Q.input.length<3)Q.input+=k;const el=$('#inp');if(el)el.textContent=Q.input||'?';fixKey();break}
+  if(Q.locked)break;const k=ds.k;if(k==='del')Q.input=Q.input.slice(0,-1);else if(k==='ok'){if(Q.input)answer(Q.input);break}else if(Q.input.length<3)Q.input+=k;
+  const el=$('#inp');if(el)el.textContent=Q.input||'?';if(Q.input.length===String(Q.cur.ans).length)answer(Q.input);break}
+ case 'yn':if(Q&&!Q.locked)answer(ds.v==='1');break;
+ case 'cell':tapCell(+ds.i);break;
+ case 'sound':S.sound=!S.sound;save();render();break;
+ case 'panel':pinModal();break;
+ case 'pk':{if(ds.k==='del')pinBuf=pinBuf.slice(0,-1);else if(pinBuf.length<4)pinBuf+=ds.k;
+  document.querySelectorAll('#pins i').forEach((e,i)=>e.className=i<pinBuf.length?'f':'');
+  if(pinBuf.length===4){if(pinBuf===S.pin){closeModal();if(view!=='panel'){panelBack=view;view='panel';render()}}else{pinBuf='';$('#pinerr').textContent='PIN incorrecto';document.querySelectorAll('#pins i').forEach(e=>e.className='')}}break}
+ case 'pinx':closeModal();if(view==='panel'&&S.role==='parent'){S.role=null;save();view='onb2';render()}break;
+ case 'closepanel':view=panelBack==='panel'?'home':panelBack;render();break;
+ case 'saveprize':S.prize=$('#prize').value.trim();save();toast('Premio guardado');break;
+ case 'saveqt':S.qt=+$('#qt').value;save();toast('Guardado');break;
+ case 'copybk':copy(backupCode(),'bk');break;
+ case 'copycode':copy(myCode(),'mycode');break;
+ case 'loadrv':{const d=readCode($('#rvcode').value);if(!d){toast('Ese código no es válido');break}if(d.bad){toast('Código modificado: no vale');break}if(d.p===S.player){toast('Ese es tu propio código');break}S.rivals[d.p]=d;save();render();toast('Código cargado');break}
+ case 'loadp':{const d=readCode($('#pcode').value);if(!d){toast('Código no válido');break}if(d.bad){toast('Código modificado: no vale');break}S.rivals[d.p]=d;save();render();toast('Código de '+TRACKS[d.p].name+' cargado');break}
+ case 'validate':{const d=readCode($('#vcode').value),r=$('#vres');r.textContent=!d?'No es un código de la app.':d.bad?'ALTERADO: alguien modificó este código.':`Auténtico. ${TRACKS[d.p].name} · ${d.x} de poder · ${d.dt}`;r.style.color=!d||d.bad?'var(--bad)':'var(--ok)';break}
+ case 'savepin':{const p=$('#npin').value.trim();if(!/^\d{4}$/.test(p)){toast('El PIN tiene que tener 4 números');break}S.pin=p;save();toast('PIN cambiado');break}
+ case 'restore':case 'restoreOnb':modal(`<h2>Restaurar respaldo</h2><p class="mut">Pegá el código que empieza con RESP-. Reemplaza todo lo que hay en este celular.</p><textarea id="rs"></textarea><button class="btn" data-a="dorestore">Restaurar</button><button class="btn sec" data-a="closem">Cancelar</button>`);break;
+ case 'dorestore':{const d=readBackup($('#rs').value);if(!d){toast('Respaldo no válido');break}S=Object.assign(fresh(),d);save();closeModal();view=S.role==='kid'?'home':S.role==='parent'?'panel':'onb1';render();toast('IA restaurada');break}
+ case 'reset':modal(`<h2>¿Borrar todo?</h2><p>Se pierde la IA, el progreso y los códigos de este celular. No se puede deshacer.</p><button class="btn sec" data-a="closem">Cancelar</button><button class="btn" data-a="doreset" style="background:var(--bad);box-shadow:none">Sí, borrar todo</button>`);break;
+ case 'doreset':S=fresh();save();closeModal();view='onb1';render();break;
+ case 'chest':if(doneCount()>=8&&!rustCount()){S.chest=true;save();sWin();modal(`<div style="text-align:center">${robot(S.ia.model,partState(),'sm')}<h2>¡SUPER IA!</h2><p>Tu premio:</p><p class="big" style="font-size:26px;color:var(--pink)">${S.prize?esc(S.prize):'Todavía no está cargado. Avisale a mamá que llegaste.'}</p><button class="btn" data-a="closem">Genial</button></div>`)}break;
+ }
+}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(!b)return;act(b.dataset.a,b.dataset)});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&S.role==='kid'&&!Q&&!R){const r=checkDecay();if(r){if(view==='home')render();decayModal(r)}}});
+
+/* inicio */
+if(!S.role)view='onb1';
+else if(S.role==='parent'){view='panel';render();pinModal()}
+else view='home';
+if(S.role!=='parent'){render();const r=checkDecay();if(r){render();decayModal(r)}}
+}
+</script>
+</body>
+</html>
