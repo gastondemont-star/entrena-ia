@@ -225,7 +225,7 @@ function toast(t){const d=document.createElement('div');d.className='toast';d.te
 /* robot */
 function robot(model,state,cls){
  const c=(MODELS[model]||MODELS.nova).c,R='#a8603a',on=i=>state[i]!=='off',f=i=>state[i]==='rust'?R:c;
- let s=`<svg class="bot ${cls||''}" viewBox="0 0 200 236" role="img" aria-label="Tu IA">`;
+ let s=`<svg xmlns="http://www.w3.org/2000/svg" class="bot ${cls||''}" viewBox="0 0 200 236" role="img" aria-label="Tu IA">`;
  if(on(7))s+=`<ellipse cx="100" cy="14" rx="40" ry="9" fill="none" stroke="${state[7]==='rust'?R:'#ffc83d'}" stroke-width="6"/>`;
  if(on(6))s+=`<path d="M64 128 L8 92 L18 156 L62 166Z" fill="${f(6)}" opacity=".9"/><path d="M136 128 L192 92 L182 156 L138 166Z" fill="${f(6)}" opacity=".9"/><path d="M64 128 L8 92 L30 130Z" fill="#fff" opacity=".35"/><path d="M136 128 L192 92 L170 130Z" fill="#fff" opacity=".35"/>`;
  if(on(1))s+=`<line x1="100" y1="44" x2="100" y2="26" stroke="#dfe3ff" stroke-width="5" stroke-linecap="round"/><circle cx="100" cy="24" r="8" fill="${f(1)}"/>`;
@@ -346,6 +346,7 @@ function endSession(o){const t=todayKey(),li=o.li,lv=Lget(li),notes=[];if(o.clea
  if(o.kind==='train'&&o.pass){if(lv.rust&&o.acc>=.8){lv.rust=false;notes.push(`Reparaste ${track().levels[li].name}: tu IA lo volvió a recordar`)}else if(lv.rust)notes.push('Para reparar la pieza oxidada necesitás 80% o más');if(lv.st<1)lv.st=1;if(o.acc===1&&o.n>=10&&lv.st<2){lv.st=2;notes.push('¡10 de 10! Te salteás Reflejos: directo al Jefe')}}
  if(o.kind==='reflex'&&o.pass&&lv.st<2)lv.st=2;
  if(o.kind==='boss'&&o.pass){if(lv.rust){lv.rust=false;notes.push(`Reparaste ${track().levels[li].name}`)}if(lv.st<3){lv.st=3;gain+=100;o.done=true;if(track().levels[li].part!==undefined)o.unlock=track().levels[li].part}lv.stars=Math.max(lv.stars||0,o.err===0?3:2)}
+ if(o.done)d.lv=(d.lv||[]).concat(track().levels[li].name);if(o.cleared)d.fx=(d.fx||0)+o.cleared;
  if(li>=0)S.lv[li]=lv;S.xp+=gain;o.gain=gain;o.tx=tx;o.notes=notes;o.newB=[];
  for(const b of BADGES){if(!S.badges.includes(b[0])&&b[3](o)){S.badges.push(b[0]);o.newB.push(b[1])}}
  save();lastResult=o;if(o.pass)sWin();view='result';render()}
@@ -354,6 +355,38 @@ function endSession(o){const t=todayKey(),li=o.li,lv=Lget(li),notes=[];if(o.clea
 function summary(){const tb={};for(const a of T210){let c=0,w=0;for(let b=1;b<=10;b++){const f=S.facts[a+'x'+b];if(f){c+=f.c;w+=f.w}}if(c+w)tb[a]=Math.round(c/(c+w)*100)}
  let pc=0,pw=0;for(const k in S.facts)if(k[0]==='p'){pc+=S.facts[k].c;pw+=S.facts[k].w}
  return {p:S.player,n:S.ia.name,m:S.ia.model,x:S.xp,l:doneCount(),r:rustCount(),s:S.streak,mi:Math.round(S.tot.sec/60),a:S.tot.t?Math.round(S.tot.c/S.tot.t*100):0,dp:Object.keys(S.days).length,dt:todayKey(),dn:dayIdx(),tb,pr:pc+pw?Math.round(pc/(pc+pw)*100):null,lv:track().levels.map((l,i)=>Lget(i).st)}}
+const DIAS=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+function reportText(){const t=todayKey(),d=S.days[t]||{sec:0,s:0,c:0,t:0,m:0},now=new Date(),min=Math.floor(d.sec/60),acc=d.t?Math.round(d.c/d.t*100):0,wl=weakList().length,dn=dayIdx();
+ const L=[`🤖 *Reporte de entrenamiento — ${track().name}*`,`📅 ${DIAS[now.getDay()]} ${now.getDate()}/${now.getMonth()+1} · Día ${Math.min(dn,DAYS)} de ${DAYS}`,''];
+ if(!d.s){L.push('😬 Hoy todavía no entrené.')}else{
+  L.push(`⏱️ *${min} min* de práctica real`);L.push(`✅ *${d.c} de ${d.t}* bien (${acc}%)`);L.push(`🎯 Misión del día: ${d.m?'*cumplida*':'no cumplida'}`)}
+ L.push(`🔥 Racha: *${S.streak} día${S.streak===1?'':'s'}*`);L.push(`⚡ Poder total: *${S.xp.toLocaleString('es-AR')}* · Módulos: ${doneCount()}/${totalLv()}`);
+ if(d.lv&&d.lv.length)L.push('',`🏆 Hoy superé: ${d.lv.join(', ')}`);
+ if(d.fx)L.push(`🧠 Dominé ${d.fx} cuenta${d.fx>1?'s':''} que me costaba${d.fx>1?'n':''}`);
+ if(wl)L.push(`📌 Me quedan ${wl} error${wl>1?'es':''} para repasar`);
+ const body=L.join('\n');return body+'\n\nVerificación: '+hash(body+SALT).slice(0,6).toUpperCase()}
+function checkReport(txt){const m=String(txt).replace(/\r/g,'').match(/^([\s\S]*?)\n\nVerificación: ([A-Z0-9]+)\s*$/);if(!m)return null;return hash(m[1].trim()+SALT).slice(0,6).toUpperCase()===m[2]}
+/* tarjeta-imagen del reporte */
+function rr(x,c,y,w,h,r){x.beginPath();x.moveTo(c+r,y);x.arcTo(c+w,y,c+w,y+h,r);x.arcTo(c+w,y+h,c,y+h,r);x.arcTo(c,y+h,c,y,r);x.arcTo(c,y,c+w,y,r);x.closePath()}
+function wrapT(x,t,cx,y,maxW,lh){const w=t.split(' ');let line='';for(const word of w){const test=line?line+' '+word:word;if(x.measureText(test).width>maxW&&line){x.fillText(line,cx,y);y+=lh;line=word}else line=test}if(line){x.fillText(line,cx,y);y+=lh}return y}
+async function reportCard(){const W=1080,H=1350,cv=document.createElement('canvas');cv.width=W;cv.height=H;const x=cv.getContext('2d');
+ try{await Promise.all([document.fonts.load('700 60px "Chakra Petch"'),document.fonts.load('500 36px Rubik')])}catch(e){}
+ const T="'Chakra Petch',sans-serif",B="Rubik,sans-serif",t=todayKey(),d=S.days[t]||{sec:0,s:0,c:0,t:0,m:0},now=new Date();
+ x.fillStyle='#2b45ee';x.fillRect(0,0,W,H);x.fillStyle='#3a55ff';x.beginPath();x.arc(W/2,420,330,0,7);x.fill();
+ x.fillStyle='#fff';x.textAlign='center';x.font=`700 64px ${T}`;x.fillText('Reporte de entrenamiento',W/2,110);
+ x.font=`500 38px ${B}`;x.fillStyle='rgba(255,255,255,.85)';x.fillText(`${track().name} · ${DIAS[now.getDay()]} ${now.getDate()}/${now.getMonth()+1} · Día ${Math.min(dayIdx(),DAYS)} de ${DAYS}`,W/2,170);
+ try{const img=new Image();await new Promise((ok,ko)=>{img.onload=ok;img.onerror=ko;img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(robot(S.ia.model,partState()))});x.drawImage(img,W/2-200,200,400,472)}catch(e){}
+ x.fillStyle='#fff';x.font=`700 52px ${T}`;x.fillText(S.ia.name,W/2,730);
+ const tiles=d.s?[[Math.floor(d.sec/60)+' min','práctica real'],[(d.t?Math.round(d.c/d.t*100):0)+'%',`bien (${d.c} de ${d.t})`],[S.streak+(S.streak===1?' día':' días'),'de racha'],[S.xp.toLocaleString('es-AR'),'de poder']]:[['0 min','hoy no entrené'],['—','sin respuestas'],[S.streak+(S.streak===1?' día':' días'),'de racha'],[S.xp.toLocaleString('es-AR'),'de poder']];
+ tiles.forEach((tl,i)=>{const tx=60+(i%2)*500,ty=770+Math.floor(i/2)*200;x.fillStyle='#fff';rr(x,tx,ty,460,180,32);x.fill();x.fillStyle=i===0&&!d.s?'#ff5436':'#131638';x.font=`700 76px ${T}`;x.fillText(tl[0],tx+230,ty+95);x.fillStyle='#5b628f';x.font=`500 34px ${B}`;x.fillText(tl[1],tx+230,ty+148)});
+ let y=1215;x.fillStyle='#fff';x.font=`600 36px ${B}`;
+ const ex=[];if(d.lv&&d.lv.length)ex.push('Hoy superé: '+d.lv.join(', '));if(d.fx)ex.push(`Dominé ${d.fx} cuenta${d.fx>1?'s':''} que me costaba${d.fx>1?'n':''}`);
+ ex.push(d.m?'Misión del día: cumplida':`Misión del día: ${Math.floor(d.sec/60)} de ${MISSION/60} min`);
+ for(const e of ex.slice(0,3))y=wrapT(x,e,W/2,y,W-120,46);
+ x.fillStyle='rgba(255,255,255,.6)';x.font=`500 28px ${B}`;x.fillText(`Módulos ${doneCount()}/${totalLv()} · Entrená tu IA`,W/2,H-28);
+ return await new Promise(ok=>cv.toBlob(ok,'image/png'))}
+let repFile=null;
+function waLink(txt){const n=(S.momTel||'').replace(/\D/g,'');return 'https://wa.me/'+(n?n:'')+'?text='+encodeURIComponent(txt)}
 function myCode(){const j=JSON.stringify(summary());return 'IA-'+b64e(j)+'.'+hash(j+SALT)}
 function readCode(str){try{const m=String(str).replace(/\s+/g,'').match(/IA-([A-Za-z0-9+/=]+)\.([a-z0-9]+)/);if(!m)return null;const j=b64d(m[1]);if(hash(j+SALT)!==m[2])return {bad:true};const d=JSON.parse(j);return d&&TRACKS[d.p]?d:null}catch(e){return null}}
 function backupCode(){const j=JSON.stringify(S);return 'RESP-'+b64e(j)+'.'+hash(j+SALT)}
@@ -397,6 +430,7 @@ function vHome(){const T=track(),d=S.days[todayKey()]||{sec:0,m:0},mp=Math.min(1
  ${STORE_OK?'':`<div class="warn">Este celular NO está guardando el progreso. Avisale a mamá antes de seguir jugando.</div>`}
  ${weakList().length?`<div class="card" style="border:3px solid var(--pink)"><h3>Errores pendientes: ${weakList().length}</h3><p class="mut">Cuentas en las que te equivocaste. Cada una sale hasta que la aciertes 3 veces seguidas.</p><button class="btn" data-a="repaso">Repasar mis errores</button></div>`:''}
  <div class="card"><div class="row"><h3>Misión del día</h3><span class="sp"></span><span class="mut">${d.m?'Cumplida':Math.floor(d.sec/60)+' de '+MISSION/60+' min'}</span></div><p class="mut">Entrená ${MISSION/60} minutos reales hoy: +40 de poder.</p><div class="bar ${d.m?'g':''}"><i style="width:${mp}%"></i></div></div>
+ <button class="btn gold" data-a="report">Mandar mi reporte a mamá</button>
  <h2 style="margin-top:20px">Módulos de entrenamiento</h2>
  <div class="map">${T.levels.map((l,i)=>{const L=Lget(i),u=unlocked(i);const st=L.rust?'rust':L.st>=3?'done':u?'cur':'lock';
   return `<button class="node ${st}" data-a="${u?'level':'locked'}" data-i="${i}"><div class="ic">${i+1}</div><div class="sp"><h3>${l.name}</h3><div class="mut">${l.sub}${l.part!==undefined?' · gana: '+PARTS[l.part]:''}</div>${L.st>=3?`<div class="stars">${stars(L.stars||0)}</div>`:''}</div><div class="mut">${st==='rust'?'Oxidado':st==='done'?'Listo':st==='cur'?(L.st?L.st+'/3':'Nuevo'):'Bloqueado'}</div></button>`}).join('')}</div>
@@ -477,12 +511,13 @@ function vPanel(){const kid=S.role==='kid';const d=kid?summary():null;
  <div class="card"><h3>Calendario del desafío</h3><p class="mut">Rosa fuerte: cumplió la misión (${MISSION/60} min). Rosa claro: entrenó menos.</p><div class="cal">${cal}</div></div>
  <div class="card"><h3>Lo que más le cuesta</h3>${weak.length?`<ul class="list">${weak.map(([k,f])=>`<li class="row"><span class="sp">${k[0]==='p'?'¿'+k.slice(1)+' es primo?':k.replace('x',' × ')}</span><span class="mut">${f.w} error${f.w>1?'es':''} · ${f.c} bien</span></li>`).join('')}</ul>`:'<p class="mut">Todavía sin errores registrados.</p>'}</div>
  <div class="card"><h3>Premio del cofre final</h3><p class="mut">Lo ve solo cuando completa todos los módulos sin piezas oxidadas.</p><input id="prize" value="${esc(S.prize)}" placeholder="Ej: salida al cine con quien elija"><button class="btn" data-a="saveprize">Guardar premio</button></div>
+ <div class="card"><h3>WhatsApp de mamá</h3><p class="mut">Si lo cargás, el reporte se abre directo en tu chat. Con código de país, sin espacios: ej 5491112345678.</p><input id="momtel" inputmode="tel" value="${esc(S.momTel||'')}" placeholder="5491112345678"><button class="btn sec" data-a="savetel">Guardar</button></div>
  <div class="card"><h3>Tiempo por pregunta</h3><select id="qt">${[6,8,10,12,15,20].map(n=>`<option value="${n}" ${qtime()===n?'selected':''}>${n} segundos</option>`).join('')}</select><button class="btn sec" data-a="saveqt">Guardar</button></div>
  <div class="card"><h3>Código de respaldo</h3><p class="mut">Guardalo (por ejemplo, mandátelo por WhatsApp). Si se borran los datos del celular, con este código recuperás la IA.</p><textarea id="bk" readonly>${esc(backupCode())}</textarea><button class="btn sec" data-a="copybk">Copiar respaldo</button></div>`
  :`<p class="onf">Pegá los códigos que te mandan los chicos desde la pestaña Duelo de su app.</p>
  <div class="card"><textarea id="pcode" placeholder="Pegá un código acá"></textarea><button class="btn" data-a="loadp">Cargar código</button></div>
  ${['delfi','santi'].map(p=>S.rivals[p]?kidBlock(S.rivals[p]):`<div class="card"><h3>${TRACKS[p].name}</h3><p class="mut" style="margin:0">Sin código cargado.</p></div>`).join('')}`}
- <div class="card"><h3>Validar un código</h3><p class="mut">Pegá un código para ver si es auténtico o si lo modificaron.</p><textarea id="vcode"></textarea><button class="btn sec" data-a="validate">Validar</button><div id="vres" class="fb"></div></div>
+ <div class="card"><h3>Validar un reporte o código</h3><p class="mut">Pegá el reporte que te mandaron por WhatsApp (completo, con la línea de Verificación) para ver si lo modificaron.</p><textarea id="vcode"></textarea><button class="btn sec" data-a="validate">Validar</button><div id="vres" class="fb"></div></div>
  <div class="card"><h3>Diagnóstico de guardado</h3><p class="mut" style="margin:0">Guardado en este navegador: <b style="color:${STORE_OK?'var(--ok)':'var(--bad)'}">${STORE_OK?'funciona':'NO funciona'}</b>. Al abrir la app ${LOADED?'<b style="color:var(--ok)">encontró</b>':'<b style="color:var(--bad)">no encontró</b>'} datos guardados de antes.${S.created?` Primer uso en este celular: ${esc(new Date(S.created).toLocaleString('es-AR'))}.`:''}</p></div>
  <div class="card"><h3>Ajustes</h3><label for="npin">Nuevo PIN (4 números)</label><input id="npin" inputmode="numeric" maxlength="4" pattern="[0-9]*"><button class="btn sec" data-a="savepin">Cambiar PIN</button>
  <button class="btn sec" data-a="restore">Restaurar desde un respaldo</button><button class="btn sec" data-a="reset" style="color:var(--bad)">Borrar todo en este celular</button></div>`}
@@ -516,6 +551,13 @@ function act(a,ds){
  case 'level':curLevel=+ds.i;view='level';render();break;
  case 'lesson':pendingPlay=null;view='lesson';render();break;
  case 'lessonok':{const lk=lessonKey(track().levels[curLevel]);S.seen=S.seen||{};S.seen[lk]=1;save();const m=pendingPlay;pendingPlay=null;if(!m){view='level';render()}else if(m==='reflex')startReflex(curLevel);else startQuiz(m,curLevel);break}
+ case 'report':{modal('<h2>Armando tu reporte…</h2>');reportCard().then(blob=>{if(!blob){toast('No se pudo armar la imagen');return}repFile=new File([blob],'reporte-'+todayKey()+'.png',{type:'image/png'});const url=URL.createObjectURL(blob);let can=false;try{can=!!(navigator.canShare&&navigator.canShare({files:[repFile]}))}catch(e){}
+  modal(`<h2>Mi trabajo de hoy</h2><img src="${url}" alt="Reporte del día" style="width:100%;border-radius:16px;display:block">
+  ${can?'<button class="btn" data-a="sharerep">Compartir (elegí WhatsApp)</button>':'<p class="mut" style="margin-top:10px">Mantené apretada la imagen → <b>Guardar en Fotos</b> o <b>Compartir</b>, y mandala por WhatsApp.</p>'}
+  <a class="btn sec" style="text-decoration:none" href="${esc(waLink(reportText()))}" target="_blank" rel="noopener">Mandar como texto</a><button class="btn sec" data-a="closem">Cerrar</button>`)}).catch(()=>toast('No se pudo armar la imagen'));break}
+ case 'sharerep':if(repFile){navigator.share({files:[repFile],title:'Mi reporte'}).catch(e=>{if(e&&e.name!=='AbortError')toast('No se pudo compartir: mantené apretada la imagen')})}break;
+ case 'copyrep':{const el=document.getElementById('rep');try{navigator.clipboard.writeText(reportText()).then(()=>toast('Copiado'),()=>toast('Mantené apretado el texto y copialo'))}catch(e){toast('Mantené apretado el texto y copialo')}if(el){const r=document.createRange();r.selectNodeContents(el);const sel=getSelection();sel.removeAllRanges();sel.addRange(r)}break}
+ case 'savetel':S.momTel=$('#momtel').value.trim();save();toast('Guardado');break;
  case 'locked':toast('Primero ganale al jefe del módulo anterior');break;
  case 'play':{const lk=lessonKey(track().levels[curLevel]);if(lk&&!(S.seen||{})[lk]){pendingPlay=ds.m;view='lesson';render();break}}if(ds.m==='reflex')startReflex(curLevel);else startQuiz(ds.m,curLevel);break;
  case 'again':curLevel=lastResult.li;if(ds.m==='repaso'){if(weakList().length)startQuiz('repaso',-1);else{toast('No te quedan errores pendientes');view='home';render()}}else if(ds.m==='reflex')startReflex(curLevel);else startQuiz(ds.m==='boss'?'boss':'train',curLevel);break;
@@ -542,7 +584,7 @@ function act(a,ds){
  case 'copycode':copy(myCode(),'mycode');break;
  case 'loadrv':{const d=readCode($('#rvcode').value);if(!d){toast('Ese código no es válido');break}if(d.bad){toast('Código modificado: no vale');break}if(d.p===S.player){toast('Ese es tu propio código');break}S.rivals[d.p]=d;save();render();toast('Código cargado');break}
  case 'loadp':{const d=readCode($('#pcode').value);if(!d){toast('Código no válido');break}if(d.bad){toast('Código modificado: no vale');break}S.rivals[d.p]=d;save();render();toast('Código de '+TRACKS[d.p].name+' cargado');break}
- case 'validate':{const d=readCode($('#vcode').value),r=$('#vres');r.textContent=!d?'No es un código de la app.':d.bad?'ALTERADO: alguien modificó este código.':`Auténtico. ${TRACKS[d.p].name} · ${d.x} de poder · ${d.dt}`;r.style.color=!d||d.bad?'var(--bad)':'var(--ok)';break}
+ case 'validate':{const raw=$('#vcode').value,r=$('#vres');const cr=checkReport(raw);if(cr!==null){r.textContent=cr?'Reporte AUTÉNTICO: no lo modificaron.':'Reporte MODIFICADO: alguien cambió los números.';r.style.color=cr?'var(--ok)':'var(--bad)';break}const d=readCode(raw);r.textContent=!d?'No es un código de la app.':d.bad?'ALTERADO: alguien modificó este código.':`Auténtico. ${TRACKS[d.p].name} · ${d.x} de poder · ${d.dt}`;r.style.color=!d||d.bad?'var(--bad)':'var(--ok)';break}
  case 'savepin':{const p=$('#npin').value.trim();if(!/^\d{4}$/.test(p)){toast('El PIN tiene que tener 4 números');break}S.pin=p;save();toast('PIN cambiado');break}
  case 'restore':case 'restoreOnb':modal(`<h2>Restaurar respaldo</h2><p class="mut">Pegá el código que empieza con RESP-. Reemplaza todo lo que hay en este celular.</p><textarea id="rs"></textarea><button class="btn" data-a="dorestore">Restaurar</button><button class="btn sec" data-a="closem">Cancelar</button>`);break;
  case 'dorestore':{const d=readBackup($('#rs').value);if(!d){toast('Respaldo no válido');break}S=Object.assign(fresh(),d);save();closeModal();view=S.role==='kid'?'home':S.role==='parent'?'panel':'onb1';render();toast('IA restaurada');break}
